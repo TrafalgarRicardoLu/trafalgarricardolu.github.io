@@ -1,4 +1,43 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-06-23T22:17:54+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">我的2019</title><link href="http://localhost:4000/%E6%88%91%E7%9A%842019" rel="alternate" type="text/html" title="我的2019" /><published>2020-02-04T18:18:00+08:00</published><updated>2020-02-04T18:18:00+08:00</updated><id>http://localhost:4000/%E6%88%91%E7%9A%842019</id><content type="html" xml:base="http://localhost:4000/%E6%88%91%E7%9A%842019">&lt;h1 id=&quot;我的2019&quot;&gt;我的2019&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?>
+
+<feed xmlns="http://www.w3.org/2005/Atom" >
+  <generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator>
+  <link href="http://localhost:4000/tag/essay/feed.xml" rel="self" type="application/atom+xml" />
+  <link href="http://localhost:4000/" rel="alternate" type="text/html" />
+  <updated>2020-06-23T22:17:54+08:00</updated>
+  <id>http://localhost:4000/tag/essay/feed.xml</id>
+
+  
+  
+  
+
+  
+    <title type="html">Ghost | </title>
+  
+
+  
+    <subtitle>The professional publishing platform</subtitle>
+  
+
+  
+
+  
+    
+      
+    
+  
+
+  
+  
+
+  
+    <entry>
+      <title type="html">我的2019</title>
+      <link href="http://localhost:4000/%E6%88%91%E7%9A%842019" rel="alternate" type="text/html" title="我的2019" />
+      <published>2020-02-04T18:18:00+08:00</published>
+      <updated>2020-02-04T18:18:00+08:00</updated>
+      <id>http://localhost:4000/%E6%88%91%E7%9A%842019</id>
+      <content type="html" xml:base="http://localhost:4000/%E6%88%91%E7%9A%842019">&lt;h1 id=&quot;我的2019&quot;&gt;我的2019&lt;/h1&gt;
 
 &lt;p&gt;​		2019悄然而过，过去的一年，大大小小事情许多，而站在2020回望，似乎除了考研，与我有关的，实在不多。适逢武汉病毒肆虐，诸事皆歇，得空搭起博客，也算整理千万思绪，展望一下迷茫的未来。&lt;/p&gt;
 
@@ -42,4 +81,32 @@
 
 &lt;p&gt;​		这三件事算得上我去年最重要的事，都不算圆满，但多少能从中学到一些经验。&lt;/p&gt;
 
-&lt;p&gt;​		但愿今年，健康平安，劳有所得。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="essay" /><summary type="html">2019悄然而过，过去的一年，大大小小事情许多，而站在2020回望，似乎除了考研，与我有关的，实在不多。适逢武汉病毒肆虐，诸事皆歇，得空搭起博客，也算整理千万思绪，展望一下迷茫的未来。</summary></entry></feed>
+&lt;p&gt;​		但愿今年，健康平安，劳有所得。&lt;/p&gt;</content>
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Trafalgar Ricardo Lu</name>
+        
+        
+      </author>
+
+      
+
+      
+        <category term="essay" />
+      
+
+      
+        <summary type="html">2019悄然而过，过去的一年，大大小小事情许多，而站在2020回望，似乎除了考研，与我有关的，实在不多。适逢武汉病毒肆虐，诸事皆歇，得空搭起博客，也算整理千万思绪，展望一下迷茫的未来。</summary>
+      
+
+      
+      
+    </entry>
+  
+</feed>

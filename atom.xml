@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title> - Articles</title>
+    <description>The professional publishing platform</description>
+    <link>
+    http://localhost:4000</link>
+    
+      
+      <item>
+        <title>我的2019</title>
+        
+          <description>2019悄然而过，过去的一年，大大小小事情许多，而站在2020回望，似乎除了考研，与我有关的，实在不多。适逢武汉病毒肆虐，诸事皆歇，得空搭起博客，也算整理千万思绪，展望一下迷茫的未来。</description>
+        
+        <pubDate>Tue, 04 Feb 2020 18:18:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E6%88%91%E7%9A%842019</link>
+        <guid isPermaLink="true">http://localhost:4000/%E6%88%91%E7%9A%842019</guid>
+      </item>
+      
+    
+  </channel>
+</rss>
