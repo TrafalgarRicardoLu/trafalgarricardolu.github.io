@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>写在研究生生活开始之前</title>
+        
+          <description>本来是准备把GitPage作为技术博客来使用的，所以第二篇本该是技术相关的文章。但是想想Spring、MyBatis之类的Web框架也没什么东西好写，Paxos和Raft还没吃透，写不出好东西。又正值大学毕业和研究生生活开始之前的暑假，不如就来写写对未来的一些展望和规划。</description>
+        
+        <pubDate>Tue, 04 Feb 2020 18:18:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D</link>
+        <guid isPermaLink="true">http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>我的2019</title>
         
           <description>2019悄然而过，过去的一年，大大小小事情许多，而站在2020回望，似乎除了考研，与我有关的，实在不多。适逢武汉病毒肆虐，诸事皆歇，得空搭起博客，也算整理千万思绪，展望一下迷茫的未来。</description>
