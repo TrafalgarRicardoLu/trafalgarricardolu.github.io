@@ -1,4 +1,158 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-07-05T20:20:37+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">写在研究生生活开始之前</title><link href="http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D" rel="alternate" type="text/html" title="写在研究生生活开始之前" /><published>2020-02-04T18:18:00+08:00</published><updated>2020-02-04T18:18:00+08:00</updated><id>http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D</id><content type="html" xml:base="http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D">&lt;p&gt;本来是准备把GitPage作为技术博客来使用的，所以第二篇本该是技术相关的文章。但是想想Spring、MyBatis之类的Web框架也没什么东西好写，Paxos和Raft还没吃透，写不出好东西。又正值大学毕业和研究生生活开始之前的暑假，不如就来写写对未来的一些展望和规划。&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-07-12T21:12:41+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">浅谈Paxos</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Paxos" rel="alternate" type="text/html" title="浅谈Paxos" /><published>2020-02-04T18:18:00+08:00</published><updated>2020-02-04T18:18:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Paxos</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Paxos">&lt;p&gt;如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。&lt;/p&gt;
+
+&lt;p&gt;Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。&lt;/p&gt;
+
+&lt;h2 id=&quot;为什么需要paxos&quot;&gt;为什么需要Paxos&lt;/h2&gt;
+
+&lt;p&gt;在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。&lt;/p&gt;
+
+&lt;p&gt;假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。&lt;/p&gt;
+
+&lt;p&gt;将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。&lt;/p&gt;
+
+&lt;h2 id=&quot;basic-paxos&quot;&gt;Basic Paxos&lt;/h2&gt;
+
+&lt;p&gt;鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。&lt;/p&gt;
+
+&lt;p&gt;通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解）&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;安全性&lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;每次提议仅有一个值被选定&lt;/li&gt;
+    &lt;li&gt;服务器在值被接受前不会知道该值已被选定&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;活跃性&lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;在一些提议中，最后必定有值会被选定&lt;/li&gt;
+    &lt;li&gt;如果值被选定了，那么服务器最后总会知道该值&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;提议者（Proposer）:负责提出提议&lt;/p&gt;
+
+  &lt;p&gt;接受者（Acceptor）:负责审阅提议并决定是否批准&lt;/p&gt;
+
+  &lt;p&gt;学习者（Learner）  :不参与议案过程仅学习通过的提案&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen）&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P1：Acceptor必须接受其收到的第一个Proposal&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。&lt;/p&gt;
+
+&lt;p&gt;由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &amp;gt; n的Proposal都具有Value v&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &amp;gt; n的Proposal都具有Value v&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;现在，我们假设一个新的 Proposer 刚刚从崩溃中恢复或加入此系统,并且发送了一个带有不同 Value 且Number更高的Proposal。P1要求Acceptor接受这个 proposal，但是却违背了 P2a。为了处理这种情况，需要继续加强P2a，于是我们得到&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P2b：如果一个Value为v的Proposal 被选中，那么之后每个 Proposer 提出的具有更大Number的Proposal都有Value v&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;P2b通过强制要求新的Proposal的值中含有Value解决了上述的问题。而作者通过数学工具，证明以下约束能够满足P2b&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P2c：对于任意的Value v和Number n，如果Value为v且Number为n的Proposal被提出，那么一定有多数Acceptor集合S满足：（a）S中不存在Acceptor已经接受任何Number小于n的Proposal，或者（b）S中的Acceptor所接受的Proposal中Number最高的具备Value v。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;文中根据P2c将整个流程划分为两段：准备（Prepare）和接受（Accept），但是主要是针对Proposer的，为了适应这个流程，进一步将P1约束如下&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;P1a：如果Acceptor没有在Prepare阶段回复过Number大于n的请求，那么在Accept阶段，它可以接受Number为n的Proposal&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;在得到上述的两个约束后，我们就能够以此为依据，得到具体的算法流程。&lt;/p&gt;
+
+&lt;h3 id=&quot;2-phase-commit&quot;&gt;2 Phase Commit&lt;/h3&gt;
+
+&lt;p&gt;上文提到整个算法流程分为两个阶段，下面我们将介绍具体流程是怎么样的。&lt;/p&gt;
+
+&lt;p&gt;阶段一为准备阶段，具体如下&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;Proposer 选择一个Number n，然后向大多数Acceptor发送Number 为n的Prepare request。&lt;/li&gt;
+    &lt;li&gt;如果一个Acceptor接收到Number为n的Prepare request，并且n大于任何它已经回复的Prepare request的Number，那么它将承诺不再接受任何Number 小于 n的proposal，并且回复已经接受的最大Number的 proposal。&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;阶段二为接受阶段，具体如下&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;如果Proposer 接受了来自大多数Acceptor对它的Prepare request 的回 复，那么接下来它将给这些 Acceptor发送Number为n，Value为v的 Proposal作为Accept request。其中v是收到的回复中最大 Number 的Proposal的Value，或者如果回复中没有Proposal的话，就可以是它自己选的任意值。&lt;/li&gt;
+    &lt;li&gt;如果 Acceptor 收到一个Number 为n的Accept request，如果它没有对Number 大于n的Prepare request进行过回复，那么就接受该Accept request。&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Raft作者的这张图形象地展示了Paxos的整个流程&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/paxos.png&quot; alt=&quot;Paxos&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;对paxos的一些思考&quot;&gt;对Paxos的一些思考&lt;/h2&gt;
+
+&lt;p&gt;上述内容本质是对《Paxos Made Simple》的翻译和复述，下面我想谈谈我对这个算法一些思考。&lt;/p&gt;
+
+&lt;h3 id=&quot;共识性和一致性有什么差别&quot;&gt;共识性和一致性有什么差别？&lt;/h3&gt;
+
+&lt;p&gt;我仍然用上文奶茶店的例子，共识指的是奶茶的配方相同，一致是奶茶的味道相同。如果采用复制状态机的方案，奶茶配方在计算机系统中就是指令，两台初始完全相同的机器，在以同样顺序执行相同的指令后，就会得到一致的数据。也就是说，只要保证各机器对执行指令和顺序的共识，那么我们就能保证数据的一致性。&lt;/p&gt;
+
+&lt;h3 id=&quot;为什么paxos需要p0&quot;&gt;为什么Paxos需要P0？&lt;/h3&gt;
+
+&lt;p&gt;这个约束有两个作用，一是在拥有2f+1台机器的系统中，它能够允许f台机器同时崩溃，二是由于多次通过提议的机器中，必有一台是重复的，那么它必定拥有最新的Proposal，可以广播给正在重启的机器。&lt;/p&gt;
+
+&lt;h3 id=&quot;为什么basic-paxos只能处理single-decree&quot;&gt;为什么Basic Paxos只能处理“Single Decree”？&lt;/h3&gt;
+
+&lt;p&gt;我们可以看到，如果Proposal希望能被接受，那么他必须包含之前所有被接受过的Proposal的Value，这在实践中是不可能实现的。另外，由于Basic Paxos允许多个Proposer，那么每个Proposal的Number大概率是不一致的，在跨事件的情况下，不能根据自增的Number来判断是否多个Proposal是对一个事件的共识。最重要的是，恐怕作者这篇论文的目的也仅仅是为了解决单个事件的共识。&lt;/p&gt;
+
+&lt;p&gt;以前看这篇的论文的时候，由于之前了解的都是有Leader的系统，Proposal的不同Number的代表对不同Value的共识，然后在读Paxos时也代入了这种想法，就不能很好理解Paxos算法，现在从这个角度来看就容易理解得多。同时也可以解释为什么P2a和P2b中要求大Number应包含小Number有的Value，因为此时并不是两个事件，而是对同一事件的修改。比如两次的Value分别是{x=1}和{x=1，y=2}，那么实际上后者只是对前者的补充而已。&lt;/p&gt;
+
+&lt;h3 id=&quot;为什么需要prepare阶段&quot;&gt;为什么需要Prepare阶段?&lt;/h3&gt;
+
+&lt;p&gt;Prepare阶段主要是为了实现Proposer的共识，这也是和有Leader系统非常不同的一点。&lt;/p&gt;
+
+&lt;p&gt;假设三个Proposer有三个版本的Proposal，具体如下&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Proposer1：{Number：1，Value：[X=1] }&lt;/p&gt;
+
+  &lt;p&gt;Proposer2：{Number：2，Value：[X=1，y=2] }&lt;/p&gt;
+
+  &lt;p&gt;Proposer3：{Number：3，Value：[X=1]，y=2，z=3] }&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;如果Proposer3最先到达Acceptor，那么根据Prepare阶段的要求，由于Proposer1和Proposer2的Number小于Proposer3，他们会被一直拒绝直到其内容和Proposer3相同。如果Proposer3最迟到达Acceptor，那么Proposer1和Proposer会在Acceptor阶段被拒绝。这里我们假设了Proposer3的Proposal是被选定的情况，如果它不是最终版本，那么，很有可能会出现Value中继续添加值的情况，然后Proposer3也会在第Accept阶段被拒绝，要求它重新提案。&lt;/p&gt;
+
+&lt;p&gt;总之，由于Basic Paxos允许多个Proposer存在，所以需要Prepare阶段保证提案的一致性。&lt;/p&gt;
+
+&lt;h3 id=&quot;为什么我们不使用basic-paxos&quot;&gt;为什么我们不使用Basic Paxos？&lt;/h3&gt;
+
+&lt;p&gt;由于Basic Paxos需要Prepare阶段保证提案的一致性，而且一次算法的运行只能允许完成单次操作，所以如果直接使用Basic Paxos在性能上很可能会达不到我们的要求。因此，学界提出了更加符合实际的Multi-Paxos，使用Basic Paxos选举Leader，让Leader直接提案代替Prepare阶段，从而大大缩短了一次算法运行需要的时间。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。</summary></entry><entry><title type="html">写在研究生生活开始之前</title><link href="http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D" rel="alternate" type="text/html" title="写在研究生生活开始之前" /><published>2020-02-04T18:18:00+08:00</published><updated>2020-02-04T18:18:00+08:00</updated><id>http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D</id><content type="html" xml:base="http://localhost:4000/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D">&lt;p&gt;本来是准备把GitPage作为技术博客来使用的，所以第二篇本该是技术相关的文章。但是想想Spring、MyBatis之类的Web框架也没什么东西好写，Paxos和Raft还没吃透，写不出好东西。又正值大学毕业和研究生生活开始之前的暑假，不如就来写写对未来的一些展望和规划。&lt;/p&gt;
 
 &lt;p&gt;之前看到过一篇文章，里面说要想一想自己希望在简历上写哪些东西，然后做出一份期望的简历，再根据这份简历上的知识点去学习相关的东西。大三找实习的时候对这种说法很是不以为意，但是现在却觉得很是受用。可能主要是因为大三时眼界很局限，只有传统的SSM框架的知识，分布式，云计算和一些业界有名的解决方案都不是很了解，简历上可写的东西屈指可数，现在恰恰相反，前一段时间开始学MIT6.824的东西，又开始在Github上了解一些新潮的项目，逐渐地将眼界拓宽，明白需要学的东西还很多。我将这份期望简历分为两部分，一是个人的项目经历，二是掌握的技能，其中个人经历准备写四个部分，给开源项目做贡献，GSoC的项目，第一段实习和第二段实习，掌握的技能则包括Java Web和分布式存储两块来写。&lt;/p&gt;
 

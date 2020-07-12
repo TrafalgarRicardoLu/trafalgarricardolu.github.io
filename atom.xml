@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>浅谈Paxos</title>
+        
+          <description>如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。</description>
+        
+        <pubDate>Tue, 04 Feb 2020 18:18:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E6%B5%85%E8%B0%88Paxos</link>
+        <guid isPermaLink="true">http://localhost:4000/%E6%B5%85%E8%B0%88Paxos</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>写在研究生生活开始之前</title>
         
           <description>本来是准备把GitPage作为技术博客来使用的，所以第二篇本该是技术相关的文章。但是想想Spring、MyBatis之类的Web框架也没什么东西好写，Paxos和Raft还没吃透，写不出好东西。又正值大学毕业和研究生生活开始之前的暑假，不如就来写写对未来的一些展望和规划。</description>
