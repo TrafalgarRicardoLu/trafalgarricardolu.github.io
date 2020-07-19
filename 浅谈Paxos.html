@@ -43,19 +43,19 @@
     <meta property="og:site_name" content="Ghost" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="浅谈Paxos" />
-    <meta property="og:description" content="如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的 Proposer" />
+    <meta property="og:description" content="图为真·Paxos———位于希腊的岛屿 如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的" />
     <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Paxos" />
-    <meta property="og:image" content="http://localhost:4000/assets/images/blog-cover.jpg" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/paxos.jpg" />
     <meta property="article:publisher" content="https://www.facebook.com/ghost" />
     <meta property="article:author" content="https://www.facebook.com/ghost" />
-    <meta property="article:published_time" content="2020-02-04T18:18:00+08:00" />
-    <meta property="article:modified_time" content="2020-02-04T18:18:00+08:00" />
+    <meta property="article:published_time" content="2020-07-13T04:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-07-13T04:00:00+08:00" />
     <meta property="article:tag" content="Distributedsystem" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="浅谈Paxos" />
-    <meta name="twitter:description" content="如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的 Proposer" />
+    <meta name="twitter:description" content="图为真·Paxos———位于希腊的岛屿 如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的" />
     <meta name="twitter:url" content="http://localhost:4000/" />
-    <meta name="twitter:image" content="http://localhost:4000/assets/images/blog-cover.jpg" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/paxos.jpg" />
     <meta name="twitter:label1" content="Written by" />
     <meta name="twitter:data1" content="Ghost" />
     <meta name="twitter:label2" content="Filed under" />
@@ -77,7 +77,7 @@
     "url": "http://localhost:4000/%E6%B5%85%E8%B0%88Paxos",
     "image": {
         "@type": "ImageObject",
-        "url": "http://localhost:4000/assets/images/blog-cover.jpg",
+        "url": "http://localhost:4000/assets/images/paxos.jpg",
         "width": 2000,
         "height": 666
     },
@@ -85,7 +85,7 @@
         "@type": "WebPage",
         "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Paxos"
     },
-    "description": "如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的 Proposer"
+    "description": "图为真·Paxos———位于希腊的岛屿 如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的"
 }
     </script>
 
@@ -156,11 +156,11 @@ into the {body} of the default.hbs template -->
 <main id="site-main" class="site-main outer" role="main">
     <div class="inner">
 
-        <article class="post-full  tag-distributedsystem post no-image">
+        <article class="post-full  tag-distributedsystem post ">
 
             <header class="post-full-header">
                 <section class="post-full-meta">
-                    <time class="post-full-meta-date" datetime=" 4 February 2020"> 4 February 2020</time>
+                    <time class="post-full-meta-date" datetime="13 July 2020">13 July 2020</time>
                     
                         <span class="date-divider">/</span>
                         
@@ -174,10 +174,15 @@ into the {body} of the default.hbs template -->
             </header>
 
             
+            <figure class="post-full-image" style="background-image: url(/assets/images/paxos.jpg)">
+            </figure>
+            
 
             <section class="post-full-content">
                 <div class="kg-card-markdown">
-                    <p>如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。</p>
+                    <p>图为真·Paxos———位于希腊的岛屿</p>
+
+<p>如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。</p>
 
 <p>Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。</p>
 
@@ -297,13 +302,13 @@ into the {body} of the default.hbs template -->
 
 <p>上述内容本质是对《Paxos Made Simple》的翻译和复述，下面我想谈谈我对这个算法一些思考。</p>
 
-<h3 id="共识性和一致性有什么差别">共识性和一致性有什么差别？</h3>
-
-<p>我仍然用上文奶茶店的例子，共识指的是奶茶的配方相同，一致是奶茶的味道相同。如果采用复制状态机的方案，奶茶配方在计算机系统中就是指令，两台初始完全相同的机器，在以同样顺序执行相同的指令后，就会得到一致的数据。也就是说，只要保证各机器对执行指令和顺序的共识，那么我们就能保证数据的一致性。</p>
+<p>我仍然用上文奶茶店的例子，共识指的是两者对同一奶茶的配方认可，一致是奶茶的味道相同。初始奶茶店希望分店和自己采用相同的配方，这个过程就是寻求共识，如果分店同意，那么他们就达成了共识，这一阶段对应于提出Proposal。得到配方后的分店按配方制作奶茶，就能得到和初始奶茶店一样的味道，就相当于保证了数据的一致性。如果采用复制状态机的方案，奶茶配方在计算机系统中就是指令，两台初始完全相同的机器，在以同样顺序执行相同的指令后，就会得到一致的数据。也就是说，只要保证各机器对执行指令和顺序的共识，那么我们就能保证数据的一致性。</p>
 
 <h3 id="为什么paxos需要p0">为什么Paxos需要P0？</h3>
 
-<p>这个约束有两个作用，一是在拥有2f+1台机器的系统中，它能够允许f台机器同时崩溃，二是由于多次通过提议的机器中，必有一台是重复的，那么它必定拥有最新的Proposal，可以广播给正在重启的机器。</p>
+<p>这个约束有两个作用，一是在拥有2f+1台机器的系统中，它能够允许f台机器同时崩溃，而仍能正常处理请求。其次，我们来考虑有2f+1个机器，而我们仅需要f个机器接受请求，那么假如所有的请求和数据都由前f个机器处理，而后f+1个机器没有任何数据。此时，前f个机器崩溃了，那么，我们的系统中就没有任何的数据了。但是，假如是要求f+1个机器接受请求，那么任何两次请求都必然有至少一个机器接受了两次请求，也就是说，它存有全部的最新数据。使用数学归纳法可以得知，无论接受了多少次请求，f+1个机器中所有的存储的数据可以拼接成完整的全部数据，那么，即使f个机器崩溃了，也能保证数据的完整。</p>
+
+<p>总得来说，Quorum机制能保证在2f+1台机器中f台机器崩溃的情况下保证Paxos协议的正常运行和数据的完整性。</p>
 
 <h3 id="为什么basic-paxos只能处理single-decree">为什么Basic Paxos只能处理“Single Decree”？</h3>
 
@@ -381,9 +386,103 @@ into the {body} of the default.hbs template -->
                 
                 
                 
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E8%B0%88%E8%B0%88Raft">浅谈Raft</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 1 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
             
 
             <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E8%B0%88%E8%B0%88Raft">
+                <div class="post-card-image" style="background-image: url(/assets/images/raft.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E8%B0%88%E8%B0%88Raft">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Raft</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
             
 
             <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
