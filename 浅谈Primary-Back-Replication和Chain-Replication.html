@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>浅谈Primary-Back Replication和Chain Replication</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅谈Primary-Back Replication和Chain Replication" />
+    <meta property="og:description" content="上图为Google提供的贪吃蛇游戏 前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。 机器同步 为了能够实现集群能够及时接管服务，并提供相同的服务，集群需要保证不同机器之间的数据一致性。我们上面提到，要实现共识需要使用Paxos或者Raft算法，而我们需要对什么东西达成共识呢？这就要提到实现机器同步的两种方法，分别是State Transfer和Replicated state machine，其中差别如下 State Transfer：主机器将本身的状态变化全部传送给其他机器。 Replicated State Machine：由于业务的很多情况符合状态机的定义，所以只要保证所有机器初试状态相同，那么以相同的顺序执行相同指令后，它们的状态也是相同的。 举个例子，客户端发送{X=1，Y=X}的指令给集群。在State Transfer中，主机器执行这个操作后，将它发生变化的数据和值发送给其他机器，也就是{X=1，Y=1}，然后其他机器将自身的数据修改为对应的值，以此实现各机器的数据一致性。而在Replication State Machine中，主机器发送{X=1，Y=X}的指令给其他机器，要求其他机器也执行这一操作，按照状态机的状态变化，也能实现数据一致性。 State Transfer的优点是不会消耗其他机器的计算能力，但是在实际情况下，发生变化的数据量比较大，它对集群的带宽和延迟要求都很搞。Replicated State Machine由于只发送指令，所以传输的数据量比较小，但是它要求各机器在本地执行指令，所以对机器的计算能力有一定要求。根据实际情况，一般集群中各机器的性能相当，所以计算能力不会成为瓶颈，而为了保证快速响应客户要求，必须尽量减少传输的延迟，State Transfer由于一次性传输的数据量大，所以在网络的传输延迟上很难实现要求。因此Replicated State Machine成为实际上的解决方案。 VM—FT VMware在《The Design of a Practical System for Fault-Tolerant Virtual Machines》中介绍了基于虚拟机实现的Primary-Backup Replication的容错解决方案。其本质就是使用Replicated State Machine实现主从的数据一致性。 Deterministic Replay 在VM-FT中，它们将指令在副机器的执行称为Deterministic Replay。由于和数据库软件不同，有一些系统命令和时间息息相关，比如中断和时间戳，考虑到传输延迟，这就会使命令执行的结果不同，从而导致数据的不一致。所以这就给系统设计带来一些问题，论文将此分为三个目标 正确收集所有的非确定（Non-Deterministic）事件和操作，保证有在执行时有足够的信息在Replay时来修正操作 正确地在副机器上Replay非确定的事件和操作 保证以上两点不会降低机器性能 由于这个系统运行在VMware上，所以VMware可以收集所有它想要的信息并将其存储在文件中，能够正确地实现第一个目标。然后，主机器通过Logging Channel将需要执行的操作和相关的补充信息传递给副机器，因此可以保证第二个目标。在实际的测试中，VMware的实现也能够保证机器的性能，满足了第三点。 FT" />
+    <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/craq.png" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-07-26T18:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-07-26T18:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅谈Primary-Back Replication和Chain Replication" />
+    <meta name="twitter:description" content="上图为Google提供的贪吃蛇游戏 前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。 机器同步 为了能够实现集群能够及时接管服务，并提供相同的服务，集群需要保证不同机器之间的数据一致性。我们上面提到，要实现共识需要使用Paxos或者Raft算法，而我们需要对什么东西达成共识呢？这就要提到实现机器同步的两种方法，分别是State Transfer和Replicated state machine，其中差别如下 State Transfer：主机器将本身的状态变化全部传送给其他机器。 Replicated State Machine：由于业务的很多情况符合状态机的定义，所以只要保证所有机器初试状态相同，那么以相同的顺序执行相同指令后，它们的状态也是相同的。 举个例子，客户端发送{X=1，Y=X}的指令给集群。在State Transfer中，主机器执行这个操作后，将它发生变化的数据和值发送给其他机器，也就是{X=1，Y=1}，然后其他机器将自身的数据修改为对应的值，以此实现各机器的数据一致性。而在Replication State Machine中，主机器发送{X=1，Y=X}的指令给其他机器，要求其他机器也执行这一操作，按照状态机的状态变化，也能实现数据一致性。 State Transfer的优点是不会消耗其他机器的计算能力，但是在实际情况下，发生变化的数据量比较大，它对集群的带宽和延迟要求都很搞。Replicated State Machine由于只发送指令，所以传输的数据量比较小，但是它要求各机器在本地执行指令，所以对机器的计算能力有一定要求。根据实际情况，一般集群中各机器的性能相当，所以计算能力不会成为瓶颈，而为了保证快速响应客户要求，必须尽量减少传输的延迟，State Transfer由于一次性传输的数据量大，所以在网络的传输延迟上很难实现要求。因此Replicated State Machine成为实际上的解决方案。 VM—FT VMware在《The Design of a Practical System for Fault-Tolerant Virtual Machines》中介绍了基于虚拟机实现的Primary-Backup Replication的容错解决方案。其本质就是使用Replicated State Machine实现主从的数据一致性。 Deterministic Replay 在VM-FT中，它们将指令在副机器的执行称为Deterministic Replay。由于和数据库软件不同，有一些系统命令和时间息息相关，比如中断和时间戳，考虑到传输延迟，这就会使命令执行的结果不同，从而导致数据的不一致。所以这就给系统设计带来一些问题，论文将此分为三个目标 正确收集所有的非确定（Non-Deterministic）事件和操作，保证有在执行时有足够的信息在Replay时来修正操作 正确地在副机器上Replay非确定的事件和操作 保证以上两点不会降低机器性能 由于这个系统运行在VMware上，所以VMware可以收集所有它想要的信息并将其存储在文件中，能够正确地实现第一个目标。然后，主机器通过Logging Channel将需要执行的操作和相关的补充信息传递给副机器，因此可以保证第二个目标。在实际的测试中，VMware的实现也能够保证机器的性能，满足了第三点。 FT" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/craq.png" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/craq.png",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication"
+    },
+    "description": "上图为Google提供的贪吃蛇游戏 前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。 机器同步 为了能够实现集群能够及时接管服务，并提供相同的服务，集群需要保证不同机器之间的数据一致性。我们上面提到，要实现共识需要使用Paxos或者Raft算法，而我们需要对什么东西达成共识呢？这就要提到实现机器同步的两种方法，分别是State Transfer和Replicated state machine，其中差别如下 State Transfer：主机器将本身的状态变化全部传送给其他机器。 Replicated State Machine：由于业务的很多情况符合状态机的定义，所以只要保证所有机器初试状态相同，那么以相同的顺序执行相同指令后，它们的状态也是相同的。 举个例子，客户端发送{X=1，Y=X}的指令给集群。在State Transfer中，主机器执行这个操作后，将它发生变化的数据和值发送给其他机器，也就是{X=1，Y=1}，然后其他机器将自身的数据修改为对应的值，以此实现各机器的数据一致性。而在Replication State Machine中，主机器发送{X=1，Y=X}的指令给其他机器，要求其他机器也执行这一操作，按照状态机的状态变化，也能实现数据一致性。 State Transfer的优点是不会消耗其他机器的计算能力，但是在实际情况下，发生变化的数据量比较大，它对集群的带宽和延迟要求都很搞。Replicated State Machine由于只发送指令，所以传输的数据量比较小，但是它要求各机器在本地执行指令，所以对机器的计算能力有一定要求。根据实际情况，一般集群中各机器的性能相当，所以计算能力不会成为瓶颈，而为了保证快速响应客户要求，必须尽量减少传输的延迟，State Transfer由于一次性传输的数据量大，所以在网络的传输延迟上很难实现要求。因此Replicated State Machine成为实际上的解决方案。 VM—FT VMware在《The Design of a Practical System for Fault-Tolerant Virtual Machines》中介绍了基于虚拟机实现的Primary-Backup Replication的容错解决方案。其本质就是使用Replicated State Machine实现主从的数据一致性。 Deterministic Replay 在VM-FT中，它们将指令在副机器的执行称为Deterministic Replay。由于和数据库软件不同，有一些系统命令和时间息息相关，比如中断和时间戳，考虑到传输延迟，这就会使命令执行的结果不同，从而导致数据的不一致。所以这就给系统设计带来一些问题，论文将此分为三个目标 正确收集所有的非确定（Non-Deterministic）事件和操作，保证有在执行时有足够的信息在Replay时来修正操作 正确地在副机器上Replay非确定的事件和操作 保证以上两点不会降低机器性能 由于这个系统运行在VMware上，所以VMware可以收集所有它想要的信息并将其存储在文件中，能够正确地实现第一个目标。然后，主机器通过Logging Channel将需要执行的操作和相关的补充信息传递给副机器，因此可以保证第二个目标。在实际的测试中，VMware的实现也能够保证机器的性能，满足了第三点。 FT"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="浅谈Primary-Back Replication和Chain Replication" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="26 July 2020">26 July 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">浅谈Primary-Back Replication和Chain Replication</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/craq.png)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>上图为Google提供的贪吃蛇游戏</p>
+
+<p>前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。</p>
+
+<h2 id="机器同步">机器同步</h2>
+
+<p>为了能够实现集群能够及时接管服务，并提供相同的服务，集群需要保证不同机器之间的数据一致性。我们上面提到，要实现共识需要使用Paxos或者Raft算法，而我们需要对什么东西达成共识呢？这就要提到实现机器同步的两种方法，分别是State Transfer和Replicated state machine，其中差别如下</p>
+
+<blockquote>
+  <p>State Transfer：主机器将本身的状态变化全部传送给其他机器。</p>
+
+  <p>Replicated State Machine：由于业务的很多情况符合状态机的定义，所以只要保证所有机器初试状态相同，那么以相同的顺序执行相同指令后，它们的状态也是相同的。</p>
+</blockquote>
+
+<p>举个例子，客户端发送{X=1，Y=X}的指令给集群。在State Transfer中，主机器执行这个操作后，将它发生变化的数据和值发送给其他机器，也就是{X=1，Y=1}，然后其他机器将自身的数据修改为对应的值，以此实现各机器的数据一致性。而在Replication State Machine中，主机器发送{X=1，Y=X}的指令给其他机器，要求其他机器也执行这一操作，按照状态机的状态变化，也能实现数据一致性。</p>
+
+<p>State Transfer的优点是不会消耗其他机器的计算能力，但是在实际情况下，发生变化的数据量比较大，它对集群的带宽和延迟要求都很搞。Replicated State Machine由于只发送指令，所以传输的数据量比较小，但是它要求各机器在本地执行指令，所以对机器的计算能力有一定要求。根据实际情况，一般集群中各机器的性能相当，所以计算能力不会成为瓶颈，而为了保证快速响应客户要求，必须尽量减少传输的延迟，State Transfer由于一次性传输的数据量大，所以在网络的传输延迟上很难实现要求。因此Replicated State Machine成为实际上的解决方案。</p>
+
+<h2 id="vmft">VM—FT</h2>
+
+<p>VMware在<a href="http://nil.csail.mit.edu/6.824/2017/papers/vm-ft.pdf">《The Design of a Practical System for Fault-Tolerant Virtual Machines》</a>中介绍了基于虚拟机实现的Primary-Backup Replication的容错解决方案。其本质就是使用Replicated State Machine实现主从的数据一致性。</p>
+
+<h3 id="deterministic-replay">Deterministic Replay</h3>
+
+<p>在VM-FT中，它们将指令在副机器的执行称为Deterministic Replay。由于和数据库软件不同，有一些系统命令和时间息息相关，比如中断和时间戳，考虑到传输延迟，这就会使命令执行的结果不同，从而导致数据的不一致。所以这就给系统设计带来一些问题，论文将此分为三个目标</p>
+
+<blockquote>
+  <ol>
+    <li>正确收集所有的非确定（Non-Deterministic）事件和操作，保证有在执行时有足够的信息在Replay时来修正操作</li>
+    <li>正确地在副机器上Replay非确定的事件和操作</li>
+    <li>保证以上两点不会降低机器性能</li>
+  </ol>
+</blockquote>
+
+<p>由于这个系统运行在VMware上，所以VMware可以收集所有它想要的信息并将其存储在文件中，能够正确地实现第一个目标。然后，主机器通过Logging Channel将需要执行的操作和相关的补充信息传递给副机器，因此可以保证第二个目标。在实际的测试中，VMware的实现也能够保证机器的性能，满足了第三点。</p>
+
+<h3 id="ft-protocol">FT Protocol</h3>
+
+<p>由于主从机器通过Logging Channel进行通信，所以其中会产生一定的延迟而导致问题。假设主机器在收到请求后，在本地执行了该请求并将其传送给副机器，同时将结果反馈给客户端，但是副机器由于一些问题没有成功执行该指令，此时主从机器的数据是不一致的。如果主机器在此时崩溃，集群交由副机器负责，那么客户端再次查询数据就会得到不一样的结果。</p>
+
+<p>因此，VMware提出了如下的要求：</p>
+
+<blockquote>
+  <p><strong>输出规则</strong>：主机器只有在副机器已经接收并返回了该指令的ACK 后，才能回复客户端。其中，副机器必须成功执行了该指令后才能回复ACK。</p>
+</blockquote>
+
+<p>其实就是要求主机器在副机器也执行完指令后，实现了整个系统的一致性，再回复客户端。其具体流程如下：</p>
+
+<p><img src="/assets/images/FT Protocol.png" alt="FT Protocol" /></p>
+
+<h3 id="错误检测和恢复">错误检测和恢复</h3>
+
+<p>为了检测错误，VM-FT使用了以下两种手段</p>
+
+<blockquote>
+  <ol>
+    <li>使用定期发送UDP来实现各机器间的Heartbeating</li>
+    <li>由于整个系统基于VMware，所以可以通过检测Logging Channel的流量来查看是否正常工作</li>
+  </ol>
+</blockquote>
+
+<p>第一种方法和Raft中使用的类似，都是通过周期性地Heartbeats来检测是否活跃。第二种方法基于系统不断接受客户端请求的事实，只要客户发送了请求，为了实现主从同步，两者必须通过Logging Channel发送指令或者返回ACK，而如果相当长的时间内没有流量的话，就说明至少主机器可能已经崩溃。</p>
+
+<p>一旦检测到主机器崩溃，那么副机器就会将Logging Channel中所有的指令执行完毕，以此到达主机器崩溃前的状态，然后在这个状态下回复客户端。而如果副机器崩溃了，主机器仅仅需要不再发送同步消息即可。</p>
+
+<h3 id="logging-channel优化">Logging Channel优化</h3>
+
+<p>为了保证主从的一致性，VM-FT还对Logging Channel进行了优化。如果副机器执行很慢，那么Logging Channel中的留存的信息过多，甚至填满了预留的空间，那么收到客户端请求时，主机器必须等待有空余空间才能发出请求，这使得客户端的体验很差。另一方面，如果主机器崩溃，副机器为了赶上主机器进度而需要花费的时间过多也会影响系统。所以VM-FT在通信中添加额外的信息，以此检测主从机器在执行同一指令上产生的延迟。如果这个延迟过大，VM-FT会减少分配给主机器的CPU算力，增加副机器的CPU算力，以此保证主从机器间的相对同步。</p>
+
+<h3 id="brain-split">Brain-Split</h3>
+
+<p>假设两台机器都能正常工作，但是由于通信原因，他们不能通过Heartbeat来确认对方正常工作，那么主机器仍然保持主机器的角色，而副机器则会将自己晋升为主机器，此时系统中有两个主机器，产生了脑裂（Brain-Split）现象。很不幸，这种情况不能通过系统自身解决，因为他们不能正常沟通，而在VM-FT中也没有使用基于Quorum的选举机制，所以只能通过外部解决。</p>
+
+<p>在VM-FT中，由于主从共享磁盘，所以可以通过磁盘这个中介来解决。可以在磁盘中记录当前是否有主机器，如果有机器想要成为主机器，那么它必须访问磁盘，读取这个字段，确认当前没有主机器，才能成为主机器。在论文中，这个过程被称为test-and-set 。而在分布式的系统中，则必须通过第三方服务器才能实现这一功能。</p>
+
+<h3 id="vm-ft总结">VM-FT总结</h3>
+
+<p>这篇论文发表于2010年，虽然距离现在有一段时间了，但是仍能看到后续设计的一些影子。比如Logging Channel中设计了Buffer来保存指令，这个设计其实就相当于WAL，它对Brain-Split的解决方案在今天仍然实用。不过，由于整体的实现是基于VMware，所以和实际的分布式系统仍然有一点差别。总而言之，我们对这篇论文最大的学习是对主从设计系统的简单了解。</p>
+
+<p>遗憾的是，这篇文章没有讨论多个副机器的情况，也就是说，没有使用Paxos算法实现多个副机器的一致性。</p>
+
+<h2 id="craq">CRAQ</h2>
+
+<p><a href="https://pdos.csail.mit.edu/6.824/papers/craq.pdf">《Object Storage on CRAQ High-throughput chain replication for read-mostly workloads》</a>使用了一种类似于链表的复制模型Chain Replication。和Raft以及上面提到的主从模型不同，这个模型用很简单的方法就保证了数据的一致性。</p>
+
+<h3 id="chain-replication">Chain Replication</h3>
+
+<p>Chain Replication将每个结点连接成链表。其中写请求只能由头结点处理，读请求只能由尾节点负责。具体流程如下图：</p>
+
+<p><img src="/assets/images/cr.png" alt="cr" /></p>
+
+<blockquote>
+  <p>写请求：</p>
+
+  <ol>
+    <li>头节点接受写请求，执行完毕后将其转发给后一个节点</li>
+    <li>所有节点都执行相关指令，同时将请求转发到下一个节点</li>
+    <li>等到尾节点也执行完相关指令后，会给上一个节点发送ACK</li>
+    <li>所有节点反向发送ACK，直到头节点</li>
+    <li>头节点收到ACK后，将结果返回给客户端</li>
+  </ol>
+
+  <p>读请求：</p>
+
+  <p>​	读请求只能由尾节点处理，尾节点返回当前数据</p>
+</blockquote>
+
+<p>我们可以看到，只有当所有节点都执行完相关操作后，写请求才能得到结果，能保证写的一致性。由于尾节点是最后更新数据的节点，所以尾节点中的数据就是当前系统最新的一致性数据，读请求总能得到已经达成一致的数据。这个模型很简单地实现了读写的数据一致性，但是问题是，所有的读操作都由尾节点来处理，相当于整个系统的读取压力都来到了尾节点，尾节点很可能崩溃。所以这篇论文提出了一些改进。</p>
+
+<h3 id="chain-replication-with-apportioned-queriescraq">Chain Replication with Apportioned Queries（CRAQ）</h3>
+
+<p>这篇论文为了减少尾节点的压力，允许所有结点处理读请求，也就是名字中Apportioned Queries的含义。但是，由于读请求和写请求时并发的，有可能出现结点数据不一致时的读请求。所以这里还需要额外的处理。</p>
+
+<p>首先考虑最简单的情况，即整个系统数据保持一致的情况。这时，无论从哪个节点读取，数据都是正常的。示意图如下</p>
+
+<p><img src="/assets/images/craq clean read.png" alt="craq" /></p>
+
+<p>其次，我们来考虑在处理写请求的同时，处理读请求的情况。其示意图如下</p>
+
+<p><img src="/assets/images/craq dirty read.png" alt="craq read" /></p>
+
+<p>图中，头节点接受了写请求，并将其传送给第二个节点，第二个节点已经处理完毕。但此时，第三个节点和尾节点都还未进行相应的处理，导致前两个节点和后两个节点的数据不一致。CRAQ通过为数据添加版本并存储多个版本的数据来解决这一问题。</p>
+
+<p>一次完整的写请求完成后，整个系统仍然能保证数据一致性，唯一不能保证的就是上图中写到一半的情况。其中，已经处理写请求的节点和尾节点数据不一致，而未处理写请求的节点则保持一致。所以，CRAQ要求处理完写请求的节点把自己标记为Dirty，而未处理的则无需标记。另一方面，尾节点始终存储能被整个系统承认的数据，即最新的保持了一致性的数据。所以，为了确定当前应该返回的数据，Dirty节点应该询问尾节点应当返回数据的版本。</p>
+
+<p>这张图中的绿色圆柱表示数据库，我们可以看到，已经处理完写请求的两个节点的数据库中存有两个版本V1和V2的数据K，而后两个节点则只有V1版本的数据K。此时，第二个节点收到读请求，由于其数据库内有两个版本的数据K，而且本身标记为Dirty，所以它需要向尾节点发送询问请求。尾节点回复其应返回版本V1的数据K，此节点就按照尾节点的指示回复客户端V1版本的数据K。</p>
+
+<p>综上所述，由于无论在CR还是CRAQ中，尾节点所存储的数据都是最新的具有一致性的数据，那么在可能出现的并发读写情况下，只需要向尾节点询问相关数据的版本，就可以确定应该回复的数据。</p>
+
+<h3 id="membership-change-和-failure-recovery">Membership Change 和 Failure Recovery</h3>
+
+<p>由于CRAQ中节点的结构类似于双向链表，所以Failure Recovery的策略其实就是Membership Change中的删除节点类似，也就是双向链表中节点的删除。设要删除的节点为D，某节点为N，其具体情况如下</p>
+
+<blockquote>
+  <p>如果D是N的后继：N需要把其所有数据传送给其新的后继。因为D有可能是上一节图中第二个节点的情况，那么写请求就不能传送给后继节点。如果D是尾节点，那么N需要D把所有ACK都反向传输完毕后再删除节点。</p>
+
+  <p>如果D是N的前驱：N需要把数据传送给其新的前驱。同时，如果D是头节点，N需要成为新的头结点。</p>
+</blockquote>
+
+<p>节点的添加大同小异，只需要在新节点A是头结点和尾节点时进行特殊处理即可。</p>
+
+<h3 id="craq总结">CRAQ总结</h3>
+
+<p>CRAQ对原有的Chain Replication进行了改进，平摊了读请求的压力，还用简单的模型保证了数据的强一致性。但是另一方面，从写请求的流程来看，需要线性地流经每一个节点势必增加系统的延迟。而Raft等算法则取决于单个机器的最长时间，如下图所示。</p>
+
+<p><img src="/assets/images/compare.png" alt="compare" /></p>
+
+<p>假设使用RAFT和CRAQ的系统中都有三个节点，黄色表示向非主节点写入指令需要的时间，蓝色表示该节点返回ACK花费的时间。可以看到，由于RAFT算法是并行的，它的实际时间取决于单个节点花费的最长时间。而CRAQ是串行的，它的时间是所有结点花费的时间总和。</p>
+
+<p>如果想要使用CRAQ的模型进行备份，那么节点数量一定不能太多，最好节点不要跨机房，否则在网络传输上花费的时间就十分庞大了。</p>
+
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E8%B0%88%E8%B0%88Raft">浅谈Raft</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Paxos">浅谈Paxos</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 2 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E8%B0%88%E8%B0%88Raft">
+                <div class="post-card-image" style="background-image: url(/assets/images/raft.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E8%B0%88%E8%B0%88Raft">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Raft</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">浅谈Primary-Back Replication和Chain Replication</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%B5%85%E8%B0%88Primary-Back+Replication%E5%92%8CChain+Replication&amp;url=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2020</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

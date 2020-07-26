@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>浅谈Primary-Back Replication和Chain Replication</title>
+        
+          <description>前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。</description>
+        
+        <pubDate>Sun, 26 Jul 2020 18:00:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication</link>
+        <guid isPermaLink="true">http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>浅谈Raft</title>
         
           <description>Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。</description>
