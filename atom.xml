@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>浅谈Amazon Aurora</title>
+        
+          <description>Amazon在2017年的SIGMOD上发表了论文对Amazon Aurora进行了介绍，简要描述了他们由于对传统MySQL性能的不满，而设计了Aurora来代替，其性能有相当大的提升。从时间和公司我们就可以看出，这是比较新的工业界的解决方案，有很高的学习参考价值。</description>
+        
+        <pubDate>Sun, 02 Aug 2020 18:00:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E6%B5%85%E8%B0%88Amazon-Aurora</link>
+        <guid isPermaLink="true">http://localhost:4000/%E6%B5%85%E8%B0%88Amazon-Aurora</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>浅谈Primary-Back Replication和Chain Replication</title>
         
           <description>前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。</description>
