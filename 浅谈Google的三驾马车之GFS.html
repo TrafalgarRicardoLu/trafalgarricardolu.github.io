@@ -43,7 +43,7 @@
     <meta property="og:site_name" content="Ghost" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="浅谈Google的三驾马车之GFS" />
-    <meta property="og:description" content="上图为真·三驾马车 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master Master返回了对应的Chunk Handle（也就是Chunk的ID，上图中的2ef0）和Chunk" />
+    <meta property="og:description" content="上图为真·三驾马车 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master" />
     <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS" />
     <meta property="og:image" content="http://localhost:4000/assets/images/troika.jpg" />
     <meta property="article:publisher" content="https://www.facebook.com/ghost" />
@@ -53,7 +53,7 @@
     <meta property="article:tag" content="Distributedsystem" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="浅谈Google的三驾马车之GFS" />
-    <meta name="twitter:description" content="上图为真·三驾马车 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master Master返回了对应的Chunk Handle（也就是Chunk的ID，上图中的2ef0）和Chunk" />
+    <meta name="twitter:description" content="上图为真·三驾马车 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master" />
     <meta name="twitter:url" content="http://localhost:4000/" />
     <meta name="twitter:image" content="http://localhost:4000/assets/images/troika.jpg" />
     <meta name="twitter:label1" content="Written by" />
@@ -85,7 +85,7 @@
         "@type": "WebPage",
         "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS"
     },
-    "description": "上图为真·三驾马车 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master Master返回了对应的Chunk Handle（也就是Chunk的ID，上图中的2ef0）和Chunk"
+    "description": "上图为真·三驾马车 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master"
 }
     </script>
 
@@ -182,7 +182,7 @@ into the {body} of the default.hbs template -->
                 <div class="kg-card-markdown">
                     <p>上图为真·三驾马车</p>
 
-<p>谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。</p>
+<p>谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。</p>
 
 <h2 id="背景介绍">背景介绍</h2>
 
@@ -421,6 +421,15 @@ into the {body} of the default.hbs template -->
                                 
                                   
                                     
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">浅谈Google的三驾马车之Bigtable</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
                                   
                                 
                                   
@@ -445,8 +454,6 @@ into the {body} of the default.hbs template -->
                                     
                                         
                                         
-                                            <li><a href="/%E8%B0%88%E8%B0%88Raft">浅谈Raft</a></li>
-                                        
                                     
                                   
                                 
@@ -466,7 +473,7 @@ into the {body} of the default.hbs template -->
                         <footer class="read-next-card-footer">
                             <a href="/tag/distributedsystem/">
                                 
-                                    See all 4 posts  →
+                                    See all 5 posts  →
                                 
                             </a>
                         </footer>
@@ -475,6 +482,55 @@ into the {body} of the default.hbs template -->
             
 
             <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">
+                <div class="post-card-image" style="background-image: url(/assets/images/troika.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Google的三驾马车之Bigtable</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
             
 
             <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->

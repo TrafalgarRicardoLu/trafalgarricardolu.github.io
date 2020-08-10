@@ -1,6 +1,106 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-08-08T18:57:13+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">浅谈Google的三驾马车之GFS</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS" rel="alternate" type="text/html" title="浅谈Google的三驾马车之GFS" /><published>2020-08-08T18:00:00+08:00</published><updated>2020-08-08T18:00:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS">&lt;p&gt;上图为真·三驾马车&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-08-10T20:39:09+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">浅谈Google的三驾马车之Bigtable</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable" rel="alternate" type="text/html" title="浅谈Google的三驾马车之Bigtable" /><published>2020-08-10T18:00:00+08:00</published><updated>2020-08-10T18:00:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">&lt;p&gt;上图为真·三驾马车&lt;/p&gt;
 
-&lt;p&gt;谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。&lt;/p&gt;
+&lt;p&gt;谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Bigtable的相关内容。&lt;/p&gt;
+
+&lt;h2 id=&quot;背景介绍&quot;&gt;背景介绍&lt;/h2&gt;
+
+&lt;p&gt;在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/Google troika.png&quot; alt=&quot;Troika&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;bigtable&quot;&gt;Bigtable&lt;/h2&gt;
+
+&lt;p&gt;Bigtable实现在Google File System的基础上，它关心数据的内容，根据的数据的内容建立数据模型，对外提供读写数据的接口。&lt;/p&gt;
+
+&lt;h3 id=&quot;数据模型&quot;&gt;数据模型&lt;/h3&gt;
+
+&lt;p&gt;Bigtable基本的数据结构和关系型数据库类似，都是以行列构成的表，但是，它还另外增加了新的维度——时间。也就是说，在行列确定的情况下，一个单元格（Cell）中有多个以事件为版本的数据。Bigtable用(row:string, column:string, time:int64) → string表示映射关系。下图为论文中给出的一个例子。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/Bigtable example.png&quot; alt=&quot;Bigtable example&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果想要在表中查询指定版本的内容，我们需要指出行，列，及版本。比如（“com.cnn.www”，“anchor：cnnsi.com”，t9）→ “CNN”。我个人猜想，增加时间这个维度是因为“三驾马车”被设计出来的时候主要是为了支持搜索引擎，搜索引擎可能需要保留多个时间段的网页数据，而GFS也使用追加（Append）作为数据的主要修改方式，所以增加时间戳作为版本既充分利用了GFS的特性，也能满足业务的需求。&lt;/p&gt;
+
+&lt;p&gt;另外，Bigtable还把多个Column Keys并入到被称为Column Family的集合中，并将Column Family作为访问控制的基础单元。我认为，这种方案其实是一种事务（Transaction）的实现方案。传统的事务以行为基本操作单位，在读写时对行上锁以实现隔离，而Bigtable则是以Column Family为单位，这里的访问控制其实就是锁的思想。&lt;/p&gt;
+
+&lt;h3 id=&quot;相关组件&quot;&gt;相关组件&lt;/h3&gt;
+
+&lt;p&gt;在介绍系统的整体架构之前，我们要对Bigtable用到的两个重要组件有一些了解。由于Bigtable是分布式的数据库，在节点之间的协调上需要额外的处理，这里，Bigtable使用了Google内部的Chubby。我们可以把Chubby看做是Zookeeper，因为Zookeeper本质也就是Chubby的开源版本。另一方面，为了加快数据的查找和存储效率，Bigtable在存储数据之前都进行了排序，而此处用到的存储文件文论称之为SSTable（Sorted String Table）。&lt;/p&gt;
+
+&lt;p&gt;在Bigtable中，由于单个表（Table）存储的数据可能相当地多，那么读写的效率就会十分低下，于是Bigtable将Table分割为固定大小的Tablet，将其作为数据存储和查找的基本单位。每当Table增加了这里要说明的是，tablet是数据存储的基本单元，是用户感知不到的。而Column Family则是访问的基本单元，是编程时指定的，两者一前一后，不是一个概念。&lt;/p&gt;
+
+&lt;h3 id=&quot;tablet-定位&quot;&gt;Tablet 定位&lt;/h3&gt;
+
+&lt;p&gt;因为是在分布式系统中，那么每个Tablet所在的机器不同，需要记录相关信息（METADATA）对其进行管理。而存储这些METADATA又需要分布式的系统，所以Bigtable又将这些METADATA的METADATA记录在一个文件中，并将这个文件的位置保存在Chubby中。总结一下，Bigtable有以下三层结构：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;在Chubby中保存着Root Tablet的位置&lt;/li&gt;
+    &lt;li&gt;Root Tablet中保存着METADATA Table中所有 Tablet 的位置&lt;/li&gt;
+    &lt;li&gt;METADATA Table中保存着所有存储数据的Tablet的位置&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/Tablet Location.png&quot; alt=&quot;Tablet Location&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这其中有几点值得注意。由于Root Tablet的特殊性，哪怕它的数据量再大，它也不允许被分割。METADATA tables被读取到内存中以加快速度，其中存储的是以开始和结尾的Row Key作为键，tablet位置作为值的映射。&lt;/p&gt;
+
+&lt;p&gt;如果客户端希望读取特定的数据，那么它会以此读取Chubby中的文件，Root Tablet，METADATA Tablet，最后读取存储改数据的Tablet。同时，为了加快读取的速度，它会将这些信息缓存到本地，直到信息失效。&lt;/p&gt;
+
+&lt;h3 id=&quot;tablet分配&quot;&gt;Tablet分配&lt;/h3&gt;
+
+&lt;p&gt;在谈Table分配之前，论文先讨论了怎么处理成员变更的问题。类似于GFS，Bigtable使用Master节点来管理这些相关的事情。&lt;/p&gt;
+
+&lt;p&gt;首先，Bigtable使用Chubby来检测Tablet Server的变化。这里的操作和Zookeeper的用法类似，当有新节点加入时，它需要在Chubby中新建一个对应的文件，并获取该文件的锁。由于所有的节点在Chubby中都有对应的文件，那么Master可以通过监听Chubby来获取所有Tablet Server的信息。这里有两种节点失效的情况，一种是仅仅回收了锁但是文件还在，这种情况很可能是节点崩溃了。由于节点不能自己退出，所以在Master节点得到该文件的锁后，它会将文件删除，以此表示节点退出。另一种情况是，文件已经被删除，这种情况说明节点是主动退出系统，那么可以直接重新分配Tablet给其他节点即可。&lt;/p&gt;
+
+&lt;p&gt;在正常的情况下，系统中会有大量数据写入，Master需要负责将这些数据分配到合适的Tablet Server。Bigtable并没有明确指出分配所使用的的算法，但是它提出了一个要求。为了保证数据的一致性，同一时间，一个 Tablet只能被分配给一个Tablet Server。Master通过向 Tablet Server 发送载入请求来分配 Tablet。如果该载入请求被Tablet Server接收到前Master仍是有效的，那么就可以认为此次 Tablet 分配操作已成功。&lt;/p&gt;
+
+&lt;p&gt;在这里，我们还要考虑Master崩溃的情况，论文中描述了Master恢复的步骤如下：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;在 Chubby 上获取 Master 独有的锁，确保不会有另一个 Master 同时启动&lt;/li&gt;
+    &lt;li&gt;从 Chubby 了解在工作的 Tablet Server&lt;/li&gt;
+    &lt;li&gt;从各个 Tablet Server 处获取其所负责的 Tablet 列表，并向其表明自己作为新 Master 的身份，确保 Tablet Server 的后续通信能发往这个新 Master&lt;/li&gt;
+    &lt;li&gt;Master 确保 Root Tablet 及 &lt;code class=&quot;highlighter-rouge&quot;&gt;METADATA&lt;/code&gt; 表的 Tablet 已完成分配&lt;/li&gt;
+    &lt;li&gt;Master 扫描 &lt;code class=&quot;highlighter-rouge&quot;&gt;METADATA&lt;/code&gt; 表获取集群中的所有 Tablet，并对未分配的 Tablet 重新进行分配&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;其中，第四步是为了第五步的正确执行。&lt;/p&gt;
+
+&lt;h3 id=&quot;读写tablet&quot;&gt;读写Tablet&lt;/h3&gt;
+
+&lt;p&gt;上面我们谈了Bigtable的数据模型，如何寻找和分配Tablet，那么数据是怎么以（row，column，time）的格式被组织成Tablet的呢？论文中给出的流程图如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/Tablet Operation.png&quot; alt=&quot;Tablet Operation&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;每个Tablet由若干个位于 GFS 上的 SSTable、一个位于内存内的MemTable以及一份Tablet Log组成。&lt;/p&gt;
+
+&lt;p&gt;我们来解释一下这张图。为了保证系统可恢复，Google首先使用Table Log（即WAL）将客户端发出的写操作请求记录在磁盘中，那么，一旦系统崩溃，仍然可以从磁盘读取数据，继续执行命令。然后，相关的数据被放入位于内存中的Memtable中，因为内存的速度相当快，那么执行排序等操作就要快得多。当Memtable的大小达到设定的值后，它就会以SSTable的形式被存储到GFS中，这被称为Minor Compaction。&lt;/p&gt;
+
+&lt;p&gt;客户端的读操作请求则要综合考虑Memtable和SSTable中的数据，如果Memtable中已经有需要读的数据，就无需读取SSTable。由于Memtable和SSTable都是有序的，所以读取的速度都相当快。&lt;/p&gt;
+
+&lt;p&gt;在这里，虽然论文没有明确指出，我认为Memtable和SSTable的大小很可能是64MB。因为GFS将单个Chunk设置为64MB，那么为了最大化地利用磁盘空间，Memtable和SSTable的大小设置为这个值是相当合理的。&lt;/p&gt;
+
+&lt;p&gt;由于SSTable中的数据有可能被标记为删除，那么我们需要定期对其进行处理，Bigtable将其称为Major Compaction。在这个过程中，Bigtable会将过期或者被删除的数据删除，并合并多个SSTable。这里似乎和GFS的Garbage Collection有点类似，但是我认为这可能是两个层面的活动。Bigtable清理的是单个Chunk中的数据，而GFS清理的是磁盘中的单个Chunk。&lt;/p&gt;
+
+&lt;h3 id=&quot;优化&quot;&gt;优化&lt;/h3&gt;
+
+&lt;p&gt;论文中提到，仅靠上述这些方法还不能达到要求的速度，因此，Bigtable还做了一些优化。&lt;/p&gt;
+
+&lt;p&gt;第一，为了提高读取的速度，Bigtable使用布隆过滤器判断数据是否在某个SSTable中。&lt;/p&gt;
+
+&lt;p&gt;第二，Tablet Server使用Scan Cache缓存SSTable返回的数据，在重复读时提高效率。使用Block Cache缓存从GFS读取的SSTable，这样在读取附近的数据时就无需从磁盘读取。&lt;/p&gt;
+
+&lt;p&gt;第三，Bigtable把所有的写入操作都写入到同一个Bigtable Log文件中，而不是每个Server分配一个。同时，因为这个文件相当大，恢复起来很费事。Bigtable会对其进行排序并进行切分，每个Tablet Sever只需读取自己的那部分就可以了。&lt;/p&gt;
+
+&lt;p&gt;第四，Bigtable允许针对特定的Column Family生成SSTable，同时进行压缩，以提高读取的效率。&lt;/p&gt;
+
+&lt;h2 id=&quot;总结&quot;&gt;总结&lt;/h2&gt;
+
+&lt;p&gt;Bigtable重要的贡献是证明了在分布式的系统中，针对超大规模的数据量，使用排序大表的来设计数据库是可行的。这直接带动了LSM Tree的流行，在后来的HBase，LevelDB中都使用了这种方式处理数据。另外，Bigtable系统中Chubby的使用，还告诉工业界分布式协调组件的重要性，这也引导了Zookeeper的设计实现，而其仍然是今天的分布式系统中重要的组件。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">谷歌在2003到2006年间发表了三篇论文，《MapReduce:Simplified Data Processing on Large Clusters》，《Bigtable:A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Bigtable的相关内容。</summary></entry><entry><title type="html">浅谈Google的三驾马车之GFS</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS" rel="alternate" type="text/html" title="浅谈Google的三驾马车之GFS" /><published>2020-08-08T18:00:00+08:00</published><updated>2020-08-08T18:00:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS">&lt;p&gt;上图为真·三驾马车&lt;/p&gt;
+
+&lt;p&gt;谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。&lt;/p&gt;
 
 &lt;h2 id=&quot;背景介绍&quot;&gt;背景介绍&lt;/h2&gt;
 
@@ -171,7 +271,7 @@
 
 &lt;h2 id=&quot;总结&quot;&gt;总结&lt;/h2&gt;
 
-&lt;p&gt;2003年GFS的横空出世具有划时代的意义，它标志着学术上的分布式理论和一些实验性质的尝试在工业界有了大规模商用的案例，尤其还是在Google这样的公司。它的系统设计在后续的系统中被屡次参考复用，而其设计确实有独到之处，比如Master负责控制流而完全将数据流从其剥离，这样的设计不能不说是优雅。这篇论文催生了HDFS，至今仍被许多公司使用，足以可见其影响力之大。哪怕这篇论文距离今天已经有快20年的时间，GFS在Google内部迭代多次，但是其设计仍然值得每一个分布式程序员学习。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">谷歌在2003到2006年间发表了三篇论文，《MapReduce:Simplified Data Processing on Large Clusters》，《Bigtable:A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。</summary></entry><entry><title type="html">浅谈Amazon Aurora</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Amazon-Aurora" rel="alternate" type="text/html" title="浅谈Amazon Aurora" /><published>2020-08-02T18:00:00+08:00</published><updated>2020-08-02T18:00:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Amazon%20Aurora</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Amazon-Aurora">&lt;p&gt;上图为极地极光&lt;/p&gt;
+&lt;p&gt;2003年GFS的横空出世具有划时代的意义，它标志着学术上的分布式理论和一些实验性质的尝试在工业界有了大规模商用的案例，尤其还是在Google这样的公司。它的系统设计在后续的系统中被屡次参考复用，而其设计确实有独到之处，比如Master负责控制流而完全将数据流从其剥离，这样的设计不能不说是优雅。这篇论文催生了HDFS，至今仍被许多公司使用，足以可见其影响力之大。哪怕这篇论文距离今天已经有快20年的时间，GFS在Google内部迭代多次，但是其设计仍然值得每一个分布式程序员学习。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">谷歌在2003到2006年间发表了三篇论文，《MapReduce:Simplified Data Processing on Large Clusters》，《Bigtable:A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。</summary></entry><entry><title type="html">浅谈Amazon Aurora</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Amazon-Aurora" rel="alternate" type="text/html" title="浅谈Amazon Aurora" /><published>2020-08-02T18:00:00+08:00</published><updated>2020-08-02T18:00:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Amazon%20Aurora</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Amazon-Aurora">&lt;p&gt;上图为极地极光&lt;/p&gt;
 
 &lt;p&gt;Amazon在2017年的SIGMOD上发表了《Amazon Aurora: Design Considerations for High Throughput Cloud-Native Relational Databases》并在对Amazon Aurora进行了介绍，简要描述了他们由于对传统MySQL性能的不满，而设计了Aurora来代替，其性能有相当大的提升。从时间和公司我们就可以看出，这是比较新的工业界的解决方案，有很高的学习参考价值。&lt;/p&gt;
 
