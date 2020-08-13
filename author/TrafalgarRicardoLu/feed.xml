@@ -4,7 +4,7 @@
   <generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator>
   <link href="http://localhost:4000/author/TrafalgarRicardoLu/feed.xml" rel="self" type="application/atom+xml" />
   <link href="http://localhost:4000/" rel="alternate" type="text/html" />
-  <updated>2020-08-10T20:39:09+08:00</updated>
+  <updated>2020-08-13T19:44:42+08:00</updated>
   <id>http://localhost:4000/author/TrafalgarRicardoLu/feed.xml</id>
 
   
@@ -32,12 +32,118 @@
 
   
     <entry>
+      <title type="html">浅谈Google的三驾马车之MapReduce</title>
+      <link href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce" rel="alternate" type="text/html" title="浅谈Google的三驾马车之MapReduce" />
+      <published>2020-08-13T18:00:00+08:00</published>
+      <updated>2020-08-13T18:00:00+08:00</updated>
+      <id>http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce</id>
+      <content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce">&lt;p&gt;上图为世界地图（World Map），实在找不到Reduce了。&lt;/p&gt;
+
+&lt;p&gt;谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。&lt;/p&gt;
+
+&lt;h2 id=&quot;背景介绍&quot;&gt;背景介绍&lt;/h2&gt;
+
+&lt;p&gt;在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/Google Troika.png&quot; alt=&quot;Troika&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;mapreduce&quot;&gt;MapReduce&lt;/h2&gt;
+
+&lt;p&gt;MapReduce本来是函数式编程中的两个函数，在尝试解决利用大数据进行计算时，Jeff Dean和Sanjay Ghemawat想到了使用这种思想简化计算模型。&lt;/p&gt;
+
+&lt;h3 id=&quot;基本思想&quot;&gt;基本思想&lt;/h3&gt;
+
+&lt;p&gt;MapReduce把所有的计算都拆分成两个基本的计算操作，即Map和Reduce。其中Map函数以一系列键值对作为输入，然后输出一个中间文件（Intermediate）。这个中间态是另一种形式的键值对。然后，Reduce函数将这个中间态作为输入，计算得出结果。其中，Map函数和Reduce函数的逻辑都是由开发人员自行定义的。一种经典的逻辑如下图所示。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/MapReduce Model.png&quot; alt=&quot;MapReduce Model&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;以WordCount为例，准备要统计一本书中所有单词出现的次数。在Map函数中，我们每遇到一个单词W，就往中间文件中写入（W，1）。然后，在Reduce函数中，把所有（W，1）出现的次数相加，就能得到W的出现次数V。&lt;/p&gt;
+
+&lt;h3 id=&quot;分布式mapreduce流程&quot;&gt;分布式MapReduce流程&lt;/h3&gt;
+
+&lt;p&gt;上面提到的模型和思想都是单机的，想要在分布式系统中实现，还需要一些改动。在MapReduce中，他们选择将大任务拆分成小任务分配给多台机器，以此充分利用分布式系统的性能。下图是论文中展示的MapReduce的流程图。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/MapReduce Overview.png&quot; alt=&quot;MapReduce Overview&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;具体的流程如下&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;MapReduce客户端会将输入的文件会分为M个片段，每个片段的大小通常在 16~64 MB 之间。然后在多个机器上开始运行MapReduce程序。&lt;/li&gt;
+    &lt;li&gt;系统中会有一个机器被选为Master节点，整个 MapReduce 计算包含M个Map 任务和R个 Reduce 任务。Master节点会为空闲的 Worker节点分配Map任务和 Reduce 任务&lt;/li&gt;
+    &lt;li&gt;执行Map任务的 Worker开始读入自己对应的片段并将读入的数据解析为输入键值对。然后调用由用户定义的 Map任务。最后，Worker会将Map任务输出的结果存在内存中。&lt;/li&gt;
+    &lt;li&gt;在执行Map的同时，Map Worker根据Partition 函数将产生的中间结果分为R个部分，然后定期将内存中的中间文件存入到自己的本地磁盘中。任务完成时，Mapper 便会将中间文件在其本地磁盘上的存放位置报告给 Master。&lt;/li&gt;
+    &lt;li&gt;Master会将中间文件存放位置通知给Reduce Work。Reduce Worker接收到这些信息后便会通过RPC读取中间文件。在读取完毕后，Reduce Worker会对读取到的数据进行排序，保证拥有相同键的键值对能够连续分布。&lt;/li&gt;
+    &lt;li&gt;最后，Reduce Worker会为每个键收集与其关联的值的集合，并调用用户定义的Reduce 函数。Reduce 函数的结果会被放入到对应的结果文件。&lt;/li&gt;
+    &lt;li&gt;当所有Map和Reduce都结束后，程序会换新客户端并返回结果。&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;整个流程非常清晰。首先，将输入文件分割成M个个片段，然后每个Map Worker读取对应的片段并执行Map函数，将结果存入中间文件。Reduce Work则通过Master得知中间文件的位置，然后读取其对应中间文件的内容并运行Reduce函数，最后把结果输出到结果文件中。&lt;/p&gt;
+
+&lt;p&gt;这里值得说明的是，无论是输入文件到Map Worker的映射还是中间文件到Reduce Worker的映射都可以通过自定义的哈希函数来确定，论文中默认使用&lt;strong&gt;Hash(key) mod R&lt;/strong&gt;来确定。另外，M和R的值都是由用户指定的，应当比实际的机器数量要多一些，以此实现均衡负载。&lt;/p&gt;
+
+&lt;h3 id=&quot;fault-tolerance&quot;&gt;Fault-Tolerance&lt;/h3&gt;
+
+&lt;p&gt;因为使用了分布式系统，所以不可避免地要考虑容错的问题，在MapReduce中，容错也考虑Master和Work两种情况。&lt;/p&gt;
+
+&lt;p&gt;Master节点会定期地将当前运行状态存为快照，当Master节点崩溃，就从最近的快照恢复然后重新执行任务。&lt;/p&gt;
+
+&lt;p&gt;Master节点会定期地Ping每个Work节点，一旦发现Work节点不可达，针对其当前执行的是Map还是Reduce任务，会有不同的策略。&lt;/p&gt;
+
+&lt;p&gt;如果是Map任务，无论任务已完成或是未完成，都会废除当前节点的任务。。之后，Master会将任务重新分配给其他节点，同时由于已经生成的中间文件不可访问，还会通知还未拿到中间文件的Reduce Worker去新的节点拿数据。&lt;/p&gt;
+
+&lt;p&gt;如果是Reduce任务，由于结果文件存在GFS中，文件的可用性和一致性由GFS保证，所以Master仅将未完成的任务重新分配。&lt;/p&gt;
+
+&lt;h3 id=&quot;优化&quot;&gt;优化&lt;/h3&gt;
+
+&lt;p&gt;如果集群中有某个 Worker 花了特别长的时间来完成最后的几个 Map 或 Reduce 任务，整个 MapReduce 计算任务的耗时就会因此被拖长，这样的 Worker 也就成了落后者。MapReduce 在整个计算完成到一定程度时就会将剩余的任务即同时将其分配给其他空闲 Worker 来执行，并在其中一个 Worker 完成后将该任务视作已完成。&lt;/p&gt;
+
+&lt;p&gt;这里论文中还提出了其他一些策略，但是我认为不是十分重要也就不再提及。&lt;/p&gt;
+
+&lt;h2 id=&quot;总结&quot;&gt;总结&lt;/h2&gt;
+
+&lt;p&gt;MapReduce是一个相当简单的计算模型，它尝试将所有的计算任务都拆分成基础的Map和Reduce，以此降低实现的复杂度。但是，这恰恰提高了编程逻辑的复杂度。我看过使用MapReduce实现Join功能的代码，十分地巧妙灵活。但是看似巧妙的背后，是模型过于简单而导致复杂度转移到了代码逻辑的层面。&lt;/p&gt;
+
+&lt;p&gt;另一方面，MapReduce的程序类似于批处理程序，需要完整的输入程序才能开始运算，而且每次运算都要至少写入两次磁盘。这就导致每次运算都要等待很长的时间，完全不能实现需要快速响应的业务场景的需求。&lt;/p&gt;
+
+&lt;p&gt;以上两个方面，一个引出了支持类SQL的计算工具，另一个引出了支持流式计算的工具，而这两个特性正是今天流行的计算工具的热点。&lt;/p&gt;
+
+&lt;p&gt;总得来说，虽然MapReduce在今天几乎抛弃了，但是在当初那个年代以及谷歌的业务需求看来，是相当合适的。&lt;/p&gt;</content>
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Trafalgar Ricardo Lu</name>
+        
+        
+      </author>
+
+      
+
+      
+        <category term="distributedsystem" />
+      
+
+      
+        <summary type="html">谷歌在2003到2006年间发表了三篇论文，《MapReduce:Simplified Data Processing on Large Clusters》，《Bigtable:A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。</summary>
+      
+
+      
+      
+    </entry>
+  
+    <entry>
       <title type="html">浅谈Google的三驾马车之Bigtable</title>
       <link href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable" rel="alternate" type="text/html" title="浅谈Google的三驾马车之Bigtable" />
       <published>2020-08-10T18:00:00+08:00</published>
       <updated>2020-08-10T18:00:00+08:00</updated>
       <id>http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable</id>
-      <content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">&lt;p&gt;上图为真·三驾马车&lt;/p&gt;
+      <content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">&lt;p&gt;上图为真·大桌子&lt;/p&gt;
 
 &lt;p&gt;谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Bigtable的相关内容。&lt;/p&gt;
 
@@ -171,7 +277,7 @@
       <published>2020-08-08T18:00:00+08:00</published>
       <updated>2020-08-08T18:00:00+08:00</updated>
       <id>http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS</id>
-      <content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS">&lt;p&gt;上图为真·三驾马车&lt;/p&gt;
+      <content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS">&lt;p&gt;上图为古天乐——真·高富帅（GFS）&lt;/p&gt;
 
 &lt;p&gt;谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。&lt;/p&gt;
 

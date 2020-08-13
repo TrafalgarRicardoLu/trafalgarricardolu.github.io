@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>浅谈Google的三驾马车之MapReduce</title>
+        
+          <description>谷歌在2003到2006年间发表了三篇论文，《MapReduce:Simplified Data Processing on Large Clusters》，《Bigtable:A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。</description>
+        
+        <pubDate>Thu, 13 Aug 2020 18:00:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce</link>
+        <guid isPermaLink="true">http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>浅谈Google的三驾马车之Bigtable</title>
         
           <description>谷歌在2003到2006年间发表了三篇论文，《MapReduce:Simplified Data Processing on Large Clusters》，《Bigtable:A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Bigtable的相关内容。</description>
