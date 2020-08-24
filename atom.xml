@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>浅谈Memcache</title>
+        
+          <description>Facebook拥有庞大的社交网络和因此产生的频繁的请求，所以为了提高响应速度，使用了缓存的策略处理这一问题。通常情况下，用户的读写请求都会落到数据库上，而数据库的数据存储在磁盘上，磁盘低下的读写效率对响应的速度影响很大。所以，Facebook使用运行在内存中的Memcached作为中间件，先在其中查询相关数据，只有当Memcached中没有请求的数据时才向数据库查询。他们充分利用了内存远高于磁盘的读写速度，实现了业务的优化。</description>
+        
+        <pubDate>Mon, 24 Aug 2020 19:00:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E6%B5%85%E8%B0%88Memcache</link>
+        <guid isPermaLink="true">http://localhost:4000/%E6%B5%85%E8%B0%88Memcache</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>浅谈Spanner</title>
         
           <description>在2012年的OSDI上，谷歌发表了《Spanner:Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。</description>

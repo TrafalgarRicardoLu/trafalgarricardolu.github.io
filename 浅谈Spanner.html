@@ -43,7 +43,7 @@
     <meta property="og:site_name" content="Ghost" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="浅谈Spanner" />
-    <meta property="og:description" content="在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos Group中的Leader" />
+    <meta property="og:description" content="上图为扳手。 在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos" />
     <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Spanner" />
     <meta property="og:image" content="http://localhost:4000/assets/images/spanner.jpeg" />
     <meta property="article:publisher" content="https://www.facebook.com/ghost" />
@@ -53,7 +53,7 @@
     <meta property="article:tag" content="Distributedsystem" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="浅谈Spanner" />
-    <meta name="twitter:description" content="在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos Group中的Leader" />
+    <meta name="twitter:description" content="上图为扳手。 在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos" />
     <meta name="twitter:url" content="http://localhost:4000/" />
     <meta name="twitter:image" content="http://localhost:4000/assets/images/spanner.jpeg" />
     <meta name="twitter:label1" content="Written by" />
@@ -85,7 +85,7 @@
         "@type": "WebPage",
         "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Spanner"
     },
-    "description": "在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos Group中的Leader"
+    "description": "上图为扳手。 在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos"
 }
     </script>
 
@@ -180,7 +180,9 @@ into the {body} of the default.hbs template -->
 
             <section class="post-full-content">
                 <div class="kg-card-markdown">
-                    <p>在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。</p>
+                    <p>上图为扳手。</p>
+
+<p>在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。</p>
 
 <h2 id="总体架构">总体架构</h2>
 
@@ -253,12 +255,15 @@ TT.before(t) = TT.now().latest &lt; t.earliest
 </blockquote>
 
 <p>论文中的符号表示如下
+<img src="/assets/images/Spanner formula1.png" alt="Spanner Sympol1" />
 <script type="math/tex">e^{Start}_i:事务Start事件\\e^{Server}_i:事务Commit事件请求到达\\e^{Commit}_i:中事务Commit完成事件\\t_{abs}(e):该事务完成的真实时间\\S_{i}:事务Commit的时间戳\\</script>
 那么上述的要求就变为
+<img src="/assets/images/Spanner formula2.png" alt="Spanner Sympol2" />
 <script type="math/tex">% <![CDATA[
 Start:t_{abs}(e^{Server}_i) < S_{i}\\
 Commit Wait:S_{i} < t_{abs}(e^{Commit}_i)\\ %]]></script>
 有如下推断
+<img src="/assets/images/Spanner formula3.png" alt="Spanner Sympol3" />
 <script type="math/tex">% <![CDATA[
 如果\\
 t_{abs}(e^{Commit}_i) < t_{abs}(e^{start}_{i+1})\\
@@ -272,6 +277,7 @@ S_{i} < S_{i+1} %]]></script>
 所以，只要满足上述两个要求，就能实现外部一致性。而Spanner中使用Coordinate Leader来实现这两个要求。</p>
 
 <p>另外，还需要保证任意时间读取到的数据都是可靠的安全的。Spanner通过规定安全时间保证任意时间的读。论文中安全时间的定义为
+<img src="/assets/images/Spanner formula4.png" alt="Spanner Safe" />
 <script type="math/tex">t_{sate}=min(t^{Paxos}_{safe},t^{TM}_{safe})\\
 t^{Paxos}_{safe}:Paxos算法能保证的安全时间\\
 t^{TM}_{safe}:事务管理器能保证的安全时间</script>
@@ -293,6 +299,7 @@ t^{TM}_{safe}:事务管理器能保证的安全时间</script>
 <h3 id="只读事务">只读事务</h3>
 
 <p>一个只读的事务会分2阶段来执行：先给该事务分配一个时间戳，然后执行事务的读操作。相当于通过快照读来读取时刻S的值。那么只需要保证如下要求，由于时间永远向前，所以能保证读取的是最新的数据。
+<img src="/assets/images/Spanner formula5.png" alt="Spanner Sympol5" />
 <script type="math/tex">S_{read}=TT.now().least</script>
 以下是只读事务的具体流程</p>
 
@@ -374,6 +381,15 @@ t^{TM}_{safe}:事务管理器能保证的安全时间</script>
                                 
                                   
                                     
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
                                   
                                 
                                   
@@ -397,8 +413,6 @@ t^{TM}_{safe}:事务管理器能保证的安全时间</script>
                                   
                                     
                                         
-                                        
-                                            <li><a href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">浅谈Google的三驾马车之Bigtable</a></li>
                                         
                                     
                                   
@@ -447,7 +461,7 @@ t^{TM}_{safe}:事务管理器能保证的安全时间</script>
                         <footer class="read-next-card-footer">
                             <a href="/tag/distributedsystem/">
                                 
-                                    See all 8 posts  →
+                                    See all 9 posts  →
                                 
                             </a>
                         </footer>
@@ -456,6 +470,55 @@ t^{TM}_{safe}:事务管理器能保证的安全时间</script>
             
 
             <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Memcache">
+                <div class="post-card-image" style="background-image: url(/assets/images/memcache.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Memcache">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Memcache</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
             
 
             <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
