@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>回顾MIT 6.824</title>
+        
+          <description>大概是在六月底，经过了一段时间的划水，决定开始学一点研究生该学的东西。之前 一直学的后端开发入门的技术，比如怎么使用Spring，MyBatis之类的框架，在学这些技术的过程中虽然听说了一些分布式系统的组件和原理，但是在那个时候觉得这些都是进阶的知识，大可以工作以后再认真学，就匆匆掠过。研究生嘛，总要学得深入一点，正好在知乎上听闻这门课的风评很好，今年又录了高清的授课视频，就决心跟着这门课学下去。</description>
+        
+        <pubDate>Sat, 29 Aug 2020 19:00:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/%E5%9B%9E%E9%A1%BEMIT6.824</link>
+        <guid isPermaLink="true">http://localhost:4000/%E5%9B%9E%E9%A1%BEMIT6.824</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>浅谈Memcache</title>
         
           <description>Facebook拥有庞大的社交网络和因此产生的频繁的请求，所以为了提高响应速度，使用了缓存的策略处理这一问题。通常情况下，用户的读写请求都会落到数据库上，而数据库的数据存储在磁盘上，磁盘低下的读写效率对响应的速度影响很大。所以，Facebook使用运行在内存中的Memcached作为中间件，先在其中查询相关数据，只有当Memcached中没有请求的数据时才向数据库查询。他们充分利用了内存远高于磁盘的读写速度，实现了业务的优化。</description>
