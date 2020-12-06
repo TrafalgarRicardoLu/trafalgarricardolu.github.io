@@ -8,6 +8,19 @@
     
       
       <item>
+        <title>共识性算法的发展</title>
+        
+          <description>在分布式系统中，由于机器可能宕机，网络可能短连等许多问题，所以如何保证多个副本之间的一致性成为了最重要的问题之一，而Paxos算法就是解决这个问题的算法。</description>
+        
+        <pubDate>Sat, 05 Dec 2020 18:00:00 +0800</pubDate>
+        <link>
+        http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95</link>
+        <guid isPermaLink="true">http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95</guid>
+      </item>
+      
+    
+      
+      <item>
         <title>回顾MIT 6.824</title>
         
           <description>大概是在六月底，经过了一段时间的划水，决定开始学一点研究生该学的东西。之前 一直学的后端开发入门的技术，比如怎么使用Spring，MyBatis之类的框架，在学这些技术的过程中虽然听说了一些分布式系统的组件和原理，但是在那个时候觉得这些都是进阶的知识，大可以工作以后再认真学，就匆匆掠过。研究生嘛，总要学得深入一点，正好在知乎上听闻这门课的风评很好，今年又录了高清的授课视频，就决心跟着这门课学下去。</description>

@@ -4,7 +4,7 @@
   <generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator>
   <link href="http://localhost:4000/author/TrafalgarRicardoLu/feed.xml" rel="self" type="application/atom+xml" />
   <link href="http://localhost:4000/" rel="alternate" type="text/html" />
-  <updated>2020-08-29T21:39:33+08:00</updated>
+  <updated>2020-12-06T17:09:23+08:00</updated>
   <id>http://localhost:4000/author/TrafalgarRicardoLu/feed.xml</id>
 
   
@@ -30,6 +30,165 @@
   
   
 
+  
+    <entry>
+      <title type="html">共识性算法的发展</title>
+      <link href="http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95" rel="alternate" type="text/html" title="共识性算法的发展" />
+      <published>2020-12-05T18:00:00+08:00</published>
+      <updated>2020-12-05T18:00:00+08:00</updated>
+      <id>http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95</id>
+      <content type="html" xml:base="http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">&lt;p&gt;本文是工程实践的一篇总结，上图为达成共识。&lt;/p&gt;
+
+&lt;p&gt;在分布式系统中，由于机器可能宕机，网络可能短连等许多问题，所以如何保证多个副本之间的一致性成为了最重要的问题之一，而Paxos算法就是解决这个问题的算法。&lt;/p&gt;
+
+&lt;h2 id=&quot;basic-paxos&quot;&gt;Basic-Paxos&lt;/h2&gt;
+
+&lt;p&gt;Basic Paxos就是Lamport在Paxos Made Simple中提出的最初的Paxos算法。&lt;/p&gt;
+
+&lt;p&gt;Basic Paxos允许多个Proposer和多个Acceptor，同时允许一个节点兼任两个角色。&lt;/p&gt;
+
+&lt;p&gt;这个算法包含两个部分：一个是Prepare阶段，二是Acceptor阶段。&lt;/p&gt;
+
+&lt;p&gt;在Prepare阶段，多个Proposer可能提出多个提案，算法会选择具有最大id的提案，并且将该id记录在本地。这里，我们可以认为Prepare阶段的作用是选出“最新”的提案，并且在Acceptor阶段尝试提交这个提案。&lt;/p&gt;
+
+&lt;p&gt;当提案的Proposer收到Quorum个确认之后，Proposer就会进入Accept阶段。&lt;/p&gt;
+
+&lt;p&gt;在Accept阶段，Acceptor会根据本地记录的提案的最大id来判断是否接受该提案，这一步会拒绝非“最新”的提案。当Proposer在Acceptor阶段收到Quorum个确认之后，就认为共识已经达成了。&lt;/p&gt;
+
+&lt;p&gt;Basic Paxos最明显的优点是解决了分布式系统中的共识问题。&lt;/p&gt;
+
+&lt;p&gt;Basic Paxos的缺点则是每次Paxos算法的运行需要经历两个阶段，这中间需要多次网络IO，而且每次算法只能确定一个值。这两个问题使得Basic Paxos算法的效率很低。所以就催生了Multi-Paxos。&lt;/p&gt;
+
+&lt;h2 id=&quot;multi-paxos&quot;&gt;Multi-Paxos&lt;/h2&gt;
+
+&lt;p&gt;Multi-Paxos的基本想法是：Prepare阶段的作用是选出“最新”的提案，而在实际的环境中，针对一个值或者一条命令，并不会在同一时间出现两种提案，也就是说不会在Prepare阶段中相互争抢。那么就可以使用一台机器作为Leader去接受客户端的请求，同时将该请求作为提案，直接进入Accept阶段。&lt;/p&gt;
+
+&lt;p&gt;然而，Leader的引入也造成了一个问题：在Basic Paxos中，由于有2f+1个Proposer，所以能容忍f个机器宕机。但是在Multi-Paxos中，由于只有一个Leader，那么必须要考虑怎么处理Leader宕机的情况。&lt;/p&gt;
+
+&lt;p&gt;这里就需要Leader Election的机制，当检测到Leader宕机以后，就会发起这个流程，Leader Election其实也是一个共识问题，所以使用的算法仍然是Basic Paxos。当Leader Election结束以后，会有新的Leader代替旧的Leader继续运行。&lt;/p&gt;
+
+&lt;p&gt;几乎所有的工业级软件使用的共识性算法都是Multi-Paxos，但是另一方面，因为Multi-Paxos只是一个模糊的概念，所以没有一个统一的规范，所以，我认为只要是实现了Paxos算法并且使用了Leader机制的实现都可以称为Multi-Paxos。&lt;/p&gt;
+
+&lt;p&gt;Multi-Paxos使用Leader机制取代了Prepare阶段，将网络IO减少了一半，同时实现了能够连续地确定值，大大提高的Basic Paxos的效率。&lt;/p&gt;
+
+&lt;p&gt;但是，就像我们上面提到的，Multi-Paxos只是模糊的概念，各有各的实现，而彼此之间的实现细节差异也很大。&lt;/p&gt;
+
+&lt;h2 id=&quot;raft&quot;&gt;Raft&lt;/h2&gt;
+
+&lt;p&gt;Raft是由Diego Ongaro提出的共识性算法，虽然有很多人认为它和Paxos是两种不同的算法，但我更倾向于认为它是Paxos的一种实现，更准确地说，Raft就是一种Multi-Paxos。但是Raft更加地清晰易懂，只要按照论文中的Figure 2要求，完全能够实现达到基本要求的Raft算法。&lt;/p&gt;
+
+&lt;p&gt;Raft中还引入了一些概念：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;复制状态机：如果两台机器以同样的状态开始，并且按照同样的顺序执行相同的命令，那么在执行完同样数量的命令以后，两台机器的状态当前的状态也是相同的。&lt;/li&gt;
+  &lt;li&gt;Ack：Follower将命令写入本地后回复的确认&lt;/li&gt;
+  &lt;li&gt;Commit：当某个Log收到Quorum个Ack后，它的状态就是Commit的&lt;/li&gt;
+  &lt;li&gt;Apply：当某个Log状态为Commit，那么就可以被Apply到状态机中&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Raft要求在正常运行的状态下，所有Follower（即之前的Acceptor）的Log都和Leader保持一致。为了实现这个目标，所有的Log在Ack时要保证之前的Log已经Ack了，所有的Log在Commit时要保证之前的Log已经Commit了，所有的Log在Apply时要保证之前的Log已经Apply了。&lt;/p&gt;
+
+&lt;p&gt;简单地说，就是要按序Ack，按序Commit，按序Apply。&lt;/p&gt;
+
+&lt;p&gt;另外，如果有Follower中的Log和Leader的Log不一致，就要删除该Log和其以后的所有Log，并把Leader的对应Log复制到Follower的对应位置上。&lt;/p&gt;
+
+&lt;p&gt;Raft还明确提出了检测Leader宕机的机制。Leader必须定期向Follower发送心跳信息，一旦在规定的时间内Follower没有收到信息，就认为和Leader断开连接（有可能是网络故障，也可能是Leader宕机），这时候Follower就会发起Leader Election，尝试选出新的Leader。&lt;/p&gt;
+
+&lt;p&gt;Raft的优点是给出了一套完全可行的实现共识的算法，同时考虑了使用状态机实现副本的数据一致。&lt;/p&gt;
+
+&lt;p&gt;Raft最为人诟病的是它按序Ack，Commit，Apply的要求。这样一来，虽然Raft使用Leader减少了一半的网络IO，但是Multi-Paxos是可以乱序Ack和Commit的，也就是说Raft不能是并行的。而这在广泛使用并行提高效率的网络中几乎是不可接受的。&lt;/p&gt;
+
+&lt;h2 id=&quot;parallelraft---polarfs&quot;&gt;ParallelRaft - PolarFS&lt;/h2&gt;
+
+&lt;p&gt;在PolarFs的论文中，他们提出了ParallelRaft，但是要指出的是这种算法只适用于PolarFS。&lt;/p&gt;
+
+&lt;p&gt;ParallelRaft允许Log乱序Ack，Commit，Apply，但是，允许乱序Ack和Commit的后果就是Log的记录中会出现“洞”，那么在Apply时就会出现问题。这里，他们给出的方案是使用Look Aside Buffer作为”桥“跨越”洞“，“桥”中记录了之前N个文件块的修改情况，而且这个“桥”是全局的。&lt;/p&gt;
+
+&lt;p&gt;在论文中，他们指出桥的长度为2，简单来说，当执行到第i个Log时，如果之前i-1和i-2个Log缺失了，但是“桥”中记录表明，这两个Log涉及的文件块和第i个Log无关，那么可以直接执行第i个Log，中间的两个Log可以等到补全时再执行。&lt;/p&gt;
+
+&lt;p&gt;但是，这种方案过于激进，而且只适用于PolarFS。因为PolarFS有特别的组件PolarCtrl来监测这些信息，恰恰是因为这是一个文件系统，记录的信息没有那么多，而且写文件块也不算频繁才能使用这一方案。&lt;/p&gt;
+
+&lt;p&gt;如果想要用在数据库中，仅仅考虑对某一行的插入和更新两个操作就很难使用这个算法实现。&lt;/p&gt;
+
+&lt;h2 id=&quot;tikv&quot;&gt;TiKV&lt;/h2&gt;
+
+&lt;p&gt;在TiKV中，PingCAP给出了一种相对保守合理的优化。&lt;/p&gt;
+
+&lt;p&gt;在原始的Raft中，必须要完整地Ack，Commit，Apply完一个Log才能继续处理下一个Log。而TiKV则并行地发送AppendEntries请求，并不等到上一个Log被Apply结束，其他的要求和原始的Raft相同。虽然这是一个简单的优化，单个请求花费的时间也没有减少，但是由于是并行地处理请求，整个流程是流水线的，系统的吞吐量大大提高了。&lt;/p&gt;
+
+&lt;p&gt;另外，TiKV还提出了三种读数据的方案。&lt;/p&gt;
+
+&lt;p&gt;第一种方案类似于原生的Raft读。传统的读需要像写一样经历整个Raft流程，然后从Leader处读取数据。这里TiKV只要求发送Heartbeats确认自己是Leader就可以返回数据。&lt;/p&gt;
+
+&lt;p&gt;第二种方案使用了Lease机制。Leader和Follower达成一个共识：在Lease规定的时间内，不会发起Leader Election。由于Raft所有的写都经过Leader，所以只要不重新选举Leader，就可以保证Leader的数据是系统中最新的，那么在这段时间内，Leader可以直接响应写请求。&lt;/p&gt;
+
+&lt;p&gt;第三种方案类似于Zookeeper的sync()请求。Follower也能接受读请求，但是在响应前必须发送请求给Leader确认自己是否拥有最新的数据。如果是，那么就可以直接回应请求，如果没有，就必须等到Apply到和Leader一样的位置。&lt;/p&gt;
+
+&lt;p&gt;TIKV给出的写方案是我认为相对合理优秀的。另外，他的读的策略也有值得借鉴的地方。&lt;/p&gt;
+
+&lt;h1 id=&quot;共识算法优化的思考&quot;&gt;共识算法优化的思考&lt;/h1&gt;
+
+&lt;p&gt;杨新泰同学转达了Terrillma老师对目前算法的局限性的观察。这里，我阐述一下我的对这两个问题的思考。&lt;/p&gt;
+
+&lt;h2 id=&quot;对于lease的思考&quot;&gt;对于Lease的思考&lt;/h2&gt;
+
+&lt;p&gt;Lease机制的工作流程是这样的：Master将Lease颁发给某一台机器，这台机器会持有一段时间Lease，在这个时间段内，这台机器就是Leader。为了减少Leader的变更，在这段时间里，Leader每执行完一次命令就会更新Lease的时间。&lt;/p&gt;
+
+&lt;p&gt;简单地说，Lease机制主要有两个作用：一是代替Leader Election，由Master挑选一个Leader；二是实现Failure Detection。当一台机器不再持有Lease时，有两种可能，一是在他的任期内没有执行命令，二是这台机器宕机了。其中，前者的可能相当地小，所以可以认为如果Lease过期，大概率是因为宕机。&lt;/p&gt;
+
+&lt;p&gt;很直观地，Failure Detection的最大延迟就是Lease的持有时间。假设当一台机器在收到Lease后立刻宕机了，那么Master必须等到Lease时间结束才能检测到这个情况。&lt;/p&gt;
+
+&lt;p&gt;同样的，在使用Heartbeats检测宕机的解决方案中，最大的延迟是设定的超时时间。但是，由于这个时间是在Follower中的，所以和Leader的任期时间无关，可以设置得相对短一些。&lt;/p&gt;
+
+&lt;p&gt;所以，如果想要加快Leader的替换时间就必须减少宕机检测的时间。由于Lease设置的时间是针对Leader的，而Heartbeats是针对Follower的，所以可以使用Heartbeats来替换Lease。&lt;/p&gt;
+
+&lt;p&gt;但是，如果单纯使用Raft中的Heartbeats，就需要花费额外的时间进行Leader Election。&lt;/p&gt;
+
+&lt;p&gt;所以，我的初步的想法是：使用Master用较短的时间和Leader进行Heartbeats，但是Master又额外维护每个副本的最大Log Index。这里的信息由每个副本在写入WAL后，发送给Master。那么当Master发现Leader不可达时，就将拥有最大Index的设置为Leader，继续服务。&lt;/p&gt;
+
+&lt;p&gt;这里存在相当多的问题，比如一台机器在写入第i个Log后宕机了，没有给Master发送信息，而另一台机器只有i-1条Log，但是却被选为Leader，那么Leader的数据就不是最新的。诸如此类，我还没有深入地思考过。这仅仅是一个相当初步的想法。&lt;/p&gt;
+
+&lt;h2 id=&quot;对于并发写的思考&quot;&gt;对于并发写的思考&lt;/h2&gt;
+
+&lt;p&gt;在重新读了Megastore以后，我认为它的写逻辑和原生的Raft类似。两者都是通过类似NextIndex确定下一个写入位置，从而保证了强一致性。但是因为必须等到nextIndex更新才能执行下一条命令，所以是非并发的。&lt;/p&gt;
+
+&lt;p&gt;这里，我想可以使用TiKV的优化方案，实现流水线式的并发写。&lt;/p&gt;
+
+&lt;p&gt;我们从复制状态机的角度重新考虑这个问题。状态机的状态取决于Apply的顺序和Apply了多少命令，而和Ack和Commit是无关的。所以从状态机的角度来说，它并不关心Log是否按序Ack和Commit。也就是说，两台机器的数据一致性只取决于Apply而不是Ack和Commit。&lt;/p&gt;
+
+&lt;p&gt;另外，由于Leader的完备性等性质，可以确定当前Term的Leader的数据是最正确最完整的。AppendEntries的失败有多重可能，总结起来就是两种，发出AppendEntries请求的Leader是过时的，或者，Follower的Log出现错误。也就是说只要是当前的Leader发出的AppendEntries，在大多数情况下是会最终成功的（除非Leader宕机了）。&lt;/p&gt;
+
+&lt;p&gt;所以，我们完全可以实现Log的乱序Ack和乱选Commit，而只要求Apply是按序的。这样，能够实现并发地处理网络请求，写WAL。理论上能大幅提高系统的吞吐量。&lt;/p&gt;
+
+&lt;h1 id=&quot;总结&quot;&gt;总结&lt;/h1&gt;
+
+&lt;p&gt;以上的两个方案是相当粗糙的，没有深入思考过的方案。希望大家能够多多讨论可能出现的问题。我个人对Paxos的理解可能也有偏颇之处，希望大家能够多多指正。&lt;/p&gt;</content>
+
+      
+      
+      
+      
+      
+
+      <author>
+          <name>Trafalgar Ricardo Lu</name>
+        
+        
+      </author>
+
+      
+
+      
+        <category term="distributedsystem" />
+      
+
+      
+        <summary type="html">在分布式系统中，由于机器可能宕机，网络可能短连等许多问题，所以如何保证多个副本之间的一致性成为了最重要的问题之一，而Paxos算法就是解决这个问题的算法。</summary>
+      
+
+      
+      
+    </entry>
   
     <entry>
       <title type="html">回顾MIT 6.824</title>
@@ -1299,179 +1458,6 @@ t^{TM}_{safe}:事务管理器能保证的安全时间&lt;/script&gt;
 
       
         <summary type="html">前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。</summary>
-      
-
-      
-      
-    </entry>
-  
-    <entry>
-      <title type="html">浅谈Raft</title>
-      <link href="http://localhost:4000/%E8%B0%88%E8%B0%88Raft" rel="alternate" type="text/html" title="浅谈Raft" />
-      <published>2020-07-19T18:00:00+08:00</published>
-      <updated>2020-07-19T18:00:00+08:00</updated>
-      <id>http://localhost:4000/%E8%B0%88%E8%B0%88Raft</id>
-      <content type="html" xml:base="http://localhost:4000/%E8%B0%88%E8%B0%88Raft">&lt;p&gt;上图为Steam同名游戏———RAFT&lt;/p&gt;
-
-&lt;p&gt;Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。&lt;/p&gt;
-
-&lt;h2 id=&quot;paxos算法的不足&quot;&gt;Paxos算法的不足&lt;/h2&gt;
-
-&lt;p&gt;了解过Paxos算法的朋友都知道，Paxos算法最后提出了2PC的机制来保证共识。但是，我们也提到了，两段式的请求消耗过大，而且多Proposer的前提也很难实现，Proposal的数据结构也未提及。总之，Basic Paxos算法在工程上有非常多的实现困难。另一方面，也就是上文提到的，非常难于理解。而Raft正是为了解决这两大问题，它提出并总结了系统中节点的角色，各角色的功能和职责，需要使用的RPC及其参数和逻辑，甚至连数据结构都清楚地给出了定义。这简直就像手把手教开发人员实现算法。而也正是由于清晰详细的介绍，Raft算法理解起来也相当地容易，顺带一提，可能是为了“便于理解”，论文本身的行文和用词也相当地简单。&lt;/p&gt;
-
-&lt;h2 id=&quot;raft&quot;&gt;Raft&lt;/h2&gt;
-
-&lt;p&gt;Raft算法使用Leader代替Paxos中的多个Proposer，使用Log Entry代替Proposal，以此简化问题。也因此，Raft算法将整个共识性问题划分为Leader Election，Log Replication两大块，同时，为了解决在崩溃时可能出现的问题，还提出了Safety的问题。此外，Raft还提供了Snapshot和Membership Change的解决方案。&lt;/p&gt;
-
-&lt;p&gt;Raft将系统中的角色划分为三种，Leader，Candidate和Follower。整个系统只有三种种通信方式，AppendEntryies PRC，RequestVote RPC和InstallSnapshot RPC。其中，AppendEntries RPC只能由Leader发出，用于向Follower追加Log Entry或者广播Heartbeats，RequestVote只能由Candidate发出，用于发起Leader Election，InstallSnapshot RPC只能由Leader发出，用于向Follower发送快照。&lt;/p&gt;
-
-&lt;h3 id=&quot;leader-election&quot;&gt;Leader Election&lt;/h3&gt;
-
-&lt;p&gt;Raft将系统中的角色划分为三种，Leader，Candidate和Follower。所有机器初试为Follower，他们三者的转化关系如下：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/state transfer.png&quot; alt=&quot;state transfer&quot; /&gt;&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;Follower-&amp;gt;Candidate：当自身的计时器超时后，将自身转变为Candidate&lt;/p&gt;
-
-  &lt;p&gt;Candidate-&amp;gt;Leader：当Candidate获得Quorum的选票时，成为Leader&lt;/p&gt;
-
-  &lt;p&gt;Candidate-&amp;gt;Follower：当Candidate在RequestVote RPC中收到的Term大于该自己的Term，或者收到Term大于等于该自己Term的AppendEntries PRC时，就变为Follower&lt;/p&gt;
-
-  &lt;p&gt;Leader-&amp;gt;Follower：当在RPC中收到的Term大于该机器的Term时，自动变为Follower&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;要特别说明的是，只有Candidate才能成为Leader，所以只有Candidate才能发起Leader Election。下面，我们逐条来分析这么做的理由。&lt;/p&gt;
-
-&lt;p&gt;Follower-&amp;gt;Candidate：首先，我们要声明的是，Raft规定了一个时限，如果在这个时限内没有收到Heartbeat（即不携带信息的AppendEnyties RPC），那么就认为超时了。假设在初始系统中，所有的机器角色都是Follower，但是只有Candidate才能发起选举，那么要怎么才能得到Leader呢？于是，这一条的作用就出现了。由于系统中没有Leader，那么就不会有Heartbeats，也就是说必定有一个Follower会超时，按着这一条的转换关系，此Follower会转变成Candidate，然后发出Leader Election请求，直到系统中出现Leader。还有一种情况，本来正常工作的系统的Leader崩溃了，同样地，由于收不到Heartbeats，其中的Follower会转变成Candidate发起Leader Election，保证系统正常运行。&lt;/p&gt;
-
-&lt;p&gt;Candidate-&amp;gt;Leader：这一条其实无需多言，按照Paxos中提出的Quorum机制，获得多数承认的机器可以成为Leader。&lt;/p&gt;
-
-&lt;p&gt;Candidate-&amp;gt;Follower：不同的Term代表不同的Leader周期，而且Term是自增的。Candidate会在发起Leader Election之前将自己的Term加一，代表自己比之前的Leader更新。而如果收到了一个大于自己的Term的RequestVote RPC，这就意味有机器在时间上比自己更新，所以就应该主动退出竞争。如果仅仅收到和自己Term相同的RequestVote RPC，这意味着在这一轮选举中有竞争者，谁能成为Leader就要看网络的连通情况，这就无需变为Follower了。而如果它收到了一个AppendEntries RPC且Term大于等于自己，而此RPC仅可能由Leader发出，这就意味本轮已经选出Leader或者有更新的Leader了，此时就应该退出竞争。&lt;/p&gt;
-
-&lt;p&gt;Leader-&amp;gt;Follower：我们知道Term的大小代表Leader的新旧，也就是说，当在RPC中接收到的Term大于自己时，有一个新的Leader被选出了。这种情况有可能由于暂时的网络故障，使得此Leader不能与其他机器连通，而当剩余机器选出Leader后网络恢复了，那么此机器中存储的数据很可能不够完整，所以应该让位给新的Leader。&lt;/p&gt;
-
-&lt;p&gt;有了以上的要求，整个系统的角色转换已经可以顺利流转了。还需要关注的，是RequestVote RPC中的投票逻辑。在Raft算法中，使用“先来先投票”的原则，这个原则暗示了在多个Candidate竞争的过程中，与其他节点通信良好的会更有可能赢得选举。也就是说，选举出来的Leader与其他节点的通信延迟低，从而提升了系统的性能。但是，当本机器的Term大于RequestVote RPC中的Term时，说明本机器比发送请求的机器更新，此时应当拒绝请求。&lt;/p&gt;
-
-&lt;p&gt;不过，假如有一种极端情况：在某种条件下，所有的节点同时成为Candidate。而按照上述策略，它们首先会投自己一票，从而产生人均一票的情况，然后重新开始选举，如此往复。为了避免这种情况，Raft使用等待随机时间后再发起选举的解决方案。&lt;/p&gt;
-
-&lt;h3 id=&quot;log-replication&quot;&gt;Log Replication&lt;/h3&gt;
-
-&lt;p&gt;Raft中的Log Entry对应于Paxos中的Proposal，但是它远比Propsal具体实际，也比Propsal强大。它是Write-ahead Log（WAL），也就是说，它在执行之前就被存储在可靠的磁盘上了，这种方案被广泛地用在实际的分布式系统中，以此提供一定的容错能力。&lt;/p&gt;
-
-&lt;p&gt;在Raft中，Log Entry使用Term和Index来标记自己，以此区别不同Log Entry并比较其新旧程度。其中，Term代表不同的Leader周期，而Index代表在同一个Leader周期中的不同Log Entry。Log Entry的整个生命周期如下：&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;ol&gt;
-    &lt;li&gt;Client向Leader发送请求{x-&amp;gt;1}，Leader将其包装成Log Entry，追加到自己的Log Entries尾部，此时该log Entry的状态为Append&lt;/li&gt;
-    &lt;li&gt;Leader使用AppendEntries RPC将这条Log Entry广播给所有的Follower，要求Follower也将其追加到自己的Log Entries的尾部&lt;/li&gt;
-    &lt;li&gt;当Follower完成后，会送回AppendEntries RPC的回答，这个回答可能是成功，也可能是失败。&lt;/li&gt;
-    &lt;li&gt;如果Leader收到Quorum个的成功的回应，他会将其状态设为Commited，表示已经在Quorum个Follower中写入该请求。如果没有，则重新发送。&lt;/li&gt;
-    &lt;li&gt;在将该Log Entry设为Commited后，Leader就可以在机器中执行{x-&amp;gt;1}，同时将结果返回给Client。此时，该Log Entry的状态为Applied。各Follower则会在后台选择时间执行该命令。&lt;/li&gt;
-  &lt;/ol&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;综上所述，Log Entry一共有三种状态，Append，Commited和Applied。&lt;/p&gt;
-
-&lt;p&gt;Append状态表示仅仅被追加到了Leader的Log Entries中，此时既未被其他机器承认，也未被执行。唯一的好消息是，它被存储在Leader的磁盘中了，哪怕Leader暂时崩溃了，只要系统恢复后该机器仍然是Leader，也能读取其中内容，继续向下执行操作。&lt;/p&gt;
-
-&lt;p&gt;Commited状态表示此Log Entry已经得到了系统中Quorum个机器的共识，在这个状态下，它能够承受2f+1个机器中f个机器的崩溃，一旦系统恢复，它可以被安全地执行。&lt;/p&gt;
-
-&lt;p&gt;Applied状态表示它已经被执行过了，只要处于该状态，那么在形成快照时，它就可以被删除。不过，由于各机器都在后台执行命令，Raft仅保证Log Entry最后能被执行但不保证执行的一致性。&lt;/p&gt;
-
-&lt;p&gt;在追加Log Entry和维护Log Entry的过程中，Raft必须维护一下两条准则&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;ul&gt;
-    &lt;li&gt;如果在两个不同机器上的Log Entry拥有同样的Term和Index，那么这个Log Entry包含的Command相同&lt;/li&gt;
-    &lt;li&gt;如果在两个不同机器上的Log Entry拥有同样的Term和Index，那么在这个Log Entry以前所有Log Entry都相同&lt;/li&gt;
-  &lt;/ul&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;由于每个Term仅有一个Leader，而Leader给每个Log Entry标记的Index不同，这就意味着Log Entry的Term和Index构成了全局唯一性。这个特性保证了第一条准则。&lt;/p&gt;
-
-&lt;p&gt;第二个准则由AppendEntries RPC的内部逻辑保证。AppendEntries PRC的请求中带有PrevLogIndex和PrevLogTerm两个参数用来验证Follower中最新的Log Entry是否和Leader一致，这两个参数是AppendEntries RPC中Log Entry的前一个Log Entry的Index和Term。一旦发现不一致，Follower被要求删掉此Log Entry并返回失败，在一下次AppendEntries RPC时，Leader会将这两个参数改为当前Log Entry的前两个Log Entry的Index和Term，以此类推。直到找到Follower和Leader匹配的位置后，Leader会把从匹配位置开始直到最后的Log Entry全部发送给Follower。Leader通过这种强制更换的方式实现了第二条准则。这里要特别指出的是，在正常情况下不会出现Follower和Leader不匹配的情况，只有在机器崩溃的时候才可能出现，而这种强制更换掉的Log Entry中有两种情况，被删除和位置变更。其中被删除的Log Entry只有可能处于Append状态，位置变更的Log Entry则处于Commited状态。&lt;/p&gt;
-
-&lt;p&gt;除此之外，AppendEntries RPC还要喝RequestVote RPC一样检查当前Term是否小于请求中的Term，否则将拒绝请求。在Leader的CommitedIndex大于本机器的CommitedIndex时，还应将本机器的CommitedIndex设为LeaderCommitedIndex和本机最新Index中的小的值，从而能跟上Leader的处理节奏。&lt;/p&gt;
-
-&lt;h3 id=&quot;safety&quot;&gt;Safety&lt;/h3&gt;
-
-&lt;p&gt;由于系统中的机器有可能发生故障和崩溃，而此时会产生许多意外的情况，所以Raft给Leader Election和Log Replication增加了一些限制来解决这些情况。&lt;/p&gt;
-
-&lt;h4 id=&quot;election-resitriction&quot;&gt;Election Resitriction&lt;/h4&gt;
-
-&lt;p&gt;如果按照原来的Leader Election的要求，那么我们可能会出现下面的情况。有一台原来网络状况不是那么好的机器，它能赶得上当前的Term，但是不能收到最新的Log Entry，假设它在同Term中总比其他机器少一个Log Entry。此时由于某种原因，它的网络状况改善了并按照选举原则拿到多数票，赢得了选举，成为Leader。那么，按照AppendEntries RPC的要求，它会删除掉其他机器中比它快的那一个Log Entry，然而这个Log Entry已经被Commited了，这就出现了问题，这个系统虽然保证了一致性但是却损失了信息。所以Raft在RequestVote RPC中添加了一个逻辑：通过和AppendEntries RPC一样的方式进行比较，如果Candidate的Log Entry比自己的旧，就投拒绝票，只有Candidate和自己一样新或者比自己更新才投同意票。&lt;/p&gt;
-
-&lt;p&gt;基于这个约束和AppendEntries RPC中的Quorum原则，如果2f+1个中有f个机器未收到最新的Log Entry，那么在选举中，他们最多只能拿到f票，从而无法成为Leader。我们可以得出结论，只有拥有最新的Log Entry的Candidate才能成为Leader。&lt;/p&gt;
-
-&lt;h4 id=&quot;committing-entries-from-previous-terms&quot;&gt;Committing Entries From Previous Terms&lt;/h4&gt;
-
-&lt;p&gt;假设有如图情况&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/overwrite.png&quot; alt=&quot;overwrite&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;其中，黑框代表Leader，Log Entry中的数字代表Term。由图可知，在Term（2）中，S1是Leader，它向S1和S2写入了Log Entry但是由于某些原因宕机了。此时，S5得到S3，S4和自己的投票成为Term（3）的Leader。但是，仅仅把Log Entry追加到本机上后，在向其他服务器发送Log Entry之前就崩溃了，注意，此时该Log Entry未被Commited。此时，S1又成为了Term（4）的Leader，在它把一个Log Entry复制给S3后，由于某些原因又崩溃了。按照上述的选举原则，S5仍然可以拿到S2，S3，S4的投票，当他成为Term（5）的Leader后，它还未收到任何Client的请求，于是它按照AppendEntries的的逻辑使用强制替换保证了一致性。但是，值得注意的是，它使用Term（3）的Log Entry覆盖了Term（4）的Log Entry。这种情况是不被允许的，旧的数据是不能覆盖新的数据的。于是，Raft提出了约束：只有和当前Term相同的Log Entry才能被Commited。&lt;/p&gt;
-
-&lt;p&gt;通过这个约束，上述的蓝色Log Entry就不会在重启后重新发送给其他机器，而客户端也永远不会收到它想要的答复。此时，如果Client需要此命令被执行，那么它需要重新发送请求。&lt;/p&gt;
-
-&lt;h3 id=&quot;membership-change&quot;&gt;Membership Change&lt;/h3&gt;
-
-&lt;p&gt;上面的三个部分其实已经完成了Raft算法的主体介绍，这一部分讨论的是Raft算法如何解决成员变更的问题，成员的组成在Raft中被称为Configuration。成员变更意味着Quorum的总人数和成员的变化，所以无论是对Leader Election还是Log Replication都有很大的影响。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/membership.png&quot; alt=&quot;membership&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;如上图所示，在指定时刻，S1，S2在旧的Configuration中，S3，S4，S5在新的成员中，但此时整个的成员交接还未完成。所以，对于旧的Configuration来说，S1和S2组成了Quorum，对于新的Configuration来说S3，S4，S5组成了Quorum。那么此时就出现了两个Quorum，可以实现两种决策，这是Raft算法必须要避免的。&lt;/p&gt;
-
-&lt;p&gt;Raft算法使用Log Entry实现成员变更。当需要进行成员变更时，Leader将包含新Configuration的Quorum以及旧Configuration的Quorum的Log Entry发送给Follower，等待Quorum的回复以此将其设为Commited。在此过程中，由于有部分成员已经收到此Configuration，所以所有的决策都需要在此条件下进行，而由于Leader包含这个Configuration，所以能确保这一点。由于中间态的Configuration既包含旧的Quorum又包含新的Quorum，所以所有的决策都需要两方的同意，这就保证的在这个阶段的决策能符合新旧Configuration的要求。然后，新的Configuration才被广播给所有Follower。同样地，由于至少有一个成员在新的Configuration下工作，所以一旦被广播给Follower，所有决策都要在新的Configuration下进行。这样，就完成了成员变更。&lt;/p&gt;
-
-&lt;p&gt;总得来说，Raft引入了一个中间态，在这个中间态中，既包含旧Configuration的Quorum，又包含新Configuration的Quorum，以此满足在此期间决策的正确性。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/membershipChange.png&quot; alt=&quot;membershipChange&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;snapchat&quot;&gt;Snapchat&lt;/h3&gt;
-
-&lt;p&gt;在Log Replication中我们说，所有Commited的Log Entry都要被记录在磁盘上，但是磁盘的容量是有限的，如果达到上限了怎么办？很明显地，Raft使用Snapshot记录下机器中此时的状态，再将最新执行的的Log Entry以前的Log Entry全部删除就可以了。&lt;/p&gt;
-
-&lt;p&gt;详细地说，Raft算法允许每台机器各自执行Snapshot，而Snapshot必须记录它最后包含的Log Entry的Term和Index作为LastIncludedEntry和LastIncludedIndex来标记自己记录的位置。然后将这个Log Entry及其之前的全部删除就能达到清理空间的效果。&lt;/p&gt;
-
-&lt;p&gt;但是，有一个情况我们必须考虑。假如一台机器网络情况和运行状况都很差，它最新的Log Entry甚至没有其他机器的快照新，这时候使用AppendEntries RPC是不能帮助它的，因为对应的Log Entry已经被删掉了。这里就需要Leader使用新的RPC，InstallSnapshot RPC来帮助它。InstallSnapshot RPC包含Leader的Snapshot的数据，LastIncludedEntry和LastIncludedIndex等信息，当这个Follower使用Snapshot更新自己的状态后，它就需要使用LastIncludedEntry和LastIncludedIndex来更新自己记录的信息，然后Leader可以再使用AppendEntryies RPC去更新它的Log Entry。&lt;/p&gt;
-
-&lt;h2 id=&quot;总结和思考&quot;&gt;总结和思考&lt;/h2&gt;
-
-&lt;p&gt;Raft相对于Basic Paxos做了很大的改进。&lt;/p&gt;
-
-&lt;p&gt;首先，它使用Leader代替了多Proposer，跳过了Prepare阶段，减少了网络请求的消耗。&lt;/p&gt;
-
-&lt;p&gt;其次，它显式地明确了使用WSL来作为Propsal的载体，不仅降低了开发难度，还提供了相当的容错能力。&lt;/p&gt;
-
-&lt;p&gt;最后，它对容错的场景进行了深入地考虑并且给出了相应的解决方案。&lt;/p&gt;
-
-&lt;p&gt;最重要的，Raft在保证共识性的同时明确地实现了数据的一致性，这对于算法落地来说实在难能可贵。&lt;/p&gt;
-
-&lt;p&gt;但是，Raft使用的成员变更看起来并不是一个很好的方案。我认为在实践中使用Zookeeper作为成员变更的中间工具可能更加合适易行。&lt;/p&gt;
-
-&lt;p&gt;总得来说，Raft算法实至名归，对得起Practical和Understandable的主旨。在GitHub上，有相当部分的项目都使用Raft算法作为他们的核心算法。&lt;/p&gt;</content>
-
-      
-      
-      
-      
-      
-
-      <author>
-          <name>Trafalgar Ricardo Lu</name>
-        
-        
-      </author>
-
-      
-
-      
-        <category term="distributedsystem" />
-      
-
-      
-        <summary type="html">Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。</summary>
       
 
       
