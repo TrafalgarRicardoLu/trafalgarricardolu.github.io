@@ -1,4 +1,32 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2020-12-06T17:09:23+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">共识性算法的发展</title><link href="http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95" rel="alternate" type="text/html" title="共识性算法的发展" /><published>2020-12-05T18:00:00+08:00</published><updated>2020-12-05T18:00:00+08:00</updated><id>http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95</id><content type="html" xml:base="http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">&lt;p&gt;本文是工程实践的一篇总结，上图为达成共识。&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-02-13T22:30:21+08:00</updated><id>http://localhost:4000/</id><title type="html">Ghost</title><subtitle>The professional publishing platform</subtitle><entry><title type="html">我的2020</title><link href="http://localhost:4000/%E6%88%91%E7%9A%842020" rel="alternate" type="text/html" title="我的2020" /><published>2021-02-13T18:00:00+08:00</published><updated>2021-02-13T18:00:00+08:00</updated><id>http://localhost:4000/%E6%88%91%E7%9A%842020</id><content type="html" xml:base="http://localhost:4000/%E6%88%91%E7%9A%842020">&lt;h1 id=&quot;我的2020&quot;&gt;我的2020&lt;/h1&gt;
+
+&lt;p&gt;转眼又是农历新年，家家户户辞旧迎新。在年交之时，总结过去，展望未来，这是去年我给自己定下的目标。不过，去年有个漫长的暑假，于是又给自己的研究生生涯做了计划。这样一来，年更的总结反倒像是半年更的了。&lt;/p&gt;
+
+&lt;p&gt;虽然说是2020年的年度总结，但说实话，我对毕业之前在学校待过的匆匆一月也没有太多印象。记得的事也不过是提交实习项目报告和毕业设计两件事。实习报告由于疫情直接变成了自选项目报告，拿了个以前写的Todo List当模板，写了下实现的思路就交上去了。毕业设计则相当地水，然后我在演示的时候竟然出现了Bug，幸好老师不追究，也就匆匆水过。但是那个Bug其实也就是一行代码的关系，事后稍作修改，也就过了。&lt;/p&gt;
+
+&lt;p&gt;毕业之后是漫长的暑假。暑假的前一个月，我隔天交叉学习MIT6.824和SICP。6.824实在让我受益匪浅，作为分布式的课程实在是再合适不过。而SICP则似乎名不符实，知乎上盛赞其是程序员的内功，毫不吝啬溢美之词。然而，学完以后我只觉得这门课的价值并没有那么高。这门课中提及的模块化的抽象，黑盒以及流式计算等概念实在太过经典，以至于每一个计算机专业的学生都不可能没有听过，因此再花费一些时间去重新学习用Lisp怎么表达和处理这些概念实在有些浪费。正如在&lt;a href=&quot;https://segmentfault.com/a/1190000005064958&quot;&gt;《MIT为何停掉SICP》&lt;/a&gt;中提到的“Sussman 指出，现代的软件工程师们的主要工作是为那些他们并不完全理解的复杂的硬件（由于商业机密的缘故，也不可能理解）而写代码。软件层面也存在同样的情况，编程环境是由无所不能的巨大的程序库构成”，SICP的所教授的知识更像是用来独立编写一个模块或者是开发整个软件所需要的知识，而现代分工过于细化和追求商业利益优先而进行的敏捷开发则与其背道而驰。不过，我依旧不能否认当我发现Lisp可以用两个操作写出自己解释器时的赞叹之情。&lt;/p&gt;
+
+&lt;p&gt;九月份正式报到，算是开启了研究生生涯（虽然有点水）。流水账地回顾一下这半年的生活。九月份已经大致明确了将来要做的方向，要么分布式数据库，要么后台开发。因为6.824的余毒未清，所以九月份都在看一些额外的论文，Dynamo之类的。所以十月份主要在看CMU15-445的视频，给数据库打个底子并且写相关的课程作业。十一月份则是读《数据库系统概念》，再把MIT6.824的作业认认真真地做完。十二月读了交大出的《现代操作系统》，也读了一些RocksDB的源码。一月份的前一个星期和后一个星期在做TinyKV，而中间两个星期由于考试的缘故，在疯狂划水。&lt;/p&gt;
+
+&lt;p&gt;这几个月的学习，也基本是让我决定了走上分布式数据库的道路。&lt;/p&gt;
+
+&lt;p&gt;回忆起来，其实每个月的学习还算Solid，这些东西写简历上去找一个不那么好的实习也够用了。但是半年的时间实在是太紧了，分布式的基础理论刚刚入门，数据库的知识也仅仅是了解了个大纲，与这两者相关的计算机网络和操作系统都没有针对性地深入地了解。这些基础知识都只局限于408的范围，如果想要真正在这个方向走下去，必须要有能力修改底层的Linux源码或者自定义通信协议。&lt;/p&gt;
+
+&lt;p&gt;不过，值得庆幸的是，我对于Raft算法已经有了一定的理解，至少所有关于Raft的问题，我都有信心答上来。另外，数据库的事务的隔离级别和实现，我也有一套可以自圆其说的理解。但是对于SQL Plan的生成，SQL的执行都还有从理论到实践的距离，毕竟14-445的实验实在算不上有工业级的质量。&lt;/p&gt;
+
+&lt;p&gt;这里不妨结合我对分布式数据库的理解，做一个简单的知识梳理。分布式数据库有两大块的知识，分布式和数据库，其中分布式的通信涉及计算机网络，数据库的优化涉及操作系统，正如我上面说的，这两块知识是我必须补齐的。分布式数据库和单机的数据库区别在于两点，一：单机的数据库存储数据具有上限，所以必须将一张表的数据Split到两台机器，这一块负责的是拓展性，可以用Shard做到，二：由于大多数服务需要很强的可用性，所以分布式的数据库还需要提供备份的功能，这一块负责的是可用性，可以用Replica做到。在Shard时，我们要考虑单机数据库事务的ACID的要求，其中，Isolation和Atomic有别于单机数据库。其他的两个概念，Consistency本来就是不准确的概念，需要通过其他三个来保证，Duration和单机一样，都是用WAL来实现的。Atomic其实就是要求一个事务要么在所有机器上都执行，要么都不执行，一般使用2PC来解决这个问题。Isolation在单机中三种实现方案，2PL，TO和OCC，貌似被使用的只有2PL和OCC。这里也对应两种方案，Percolator使用2PL加2PC来解决A和I，Omid使用OCC加2PC来实现A和I。而Replica则比较简单，只需要在一个Group里执行Raft或者Paxos算法就可以了。另外，在读取完需要的数据以后还要执行的Join或者Count等操作就要设计分布式计算的内容，这一块实在不太了解。其他的数据库内容，比如底层使用以LSM Tree为结构的KV存储还是参照传统数据库使用Page的存储都可以视为单机的问题。&lt;/p&gt;
+
+&lt;p&gt;最后一部分是对未来的展望和计划。&lt;/p&gt;
+
+&lt;p&gt;首当其冲的是表达能力，这么多次面试下来，最大的感觉就是不能将自己学的东西表达出来，并不是不会，而是开始面试以后说话不会深思熟虑，只想更快地回答问题。自我反思以后感觉有两个问题，第一个是心态问题：其实说句自大的话，我自己应该至少是华为保底的，那么大可不必那么害怕失败，面试本质是一个技术交流的场景，在这个场景里不会的就说不会，会的就尽可能地吹起来，不应该有太多的心理负担；第二个是对知识的梳理不够清晰，简历的东西其实都在我自己的脑子里，无非是记得清楚不清楚的问题，但是只有把所有的东西都清楚的梳理一遍，才能在说出来的时候有条理，有自信。我想对于这两点的解决方案是预设一些问题，然后反复地练习怎么回答，最后才能达到想要的状态。&lt;/p&gt;
+
+&lt;p&gt;先讲一讲离得近的计划——实习。目前直投了阿里的提前批，后面至少要投华为，微软，阿里，字节这几家，所以一个合理的顺序是必要的。我准备是按照华为，阿里，字节的顺序投，不写微软是因为微软的面试内容只有算法，和其他的没什么关系，不构成攒经验的说法，然后在华为和阿里中间应该还要加几家一般的公司。期望的目标是，希望能在微软先做几个月，然后到明年的三月份再去字节或者阿里实习。这么考虑是因为微软的实习比较轻松也比较近，所以能够有比较长的时间带薪自习，去了解数据库相关内容的实现，Linux源码和计算机网络，再学习一下C++的知识，最好能够看到Azure内部的文档，学习一下他们分布式数据库的实现。最后，准备充分以后再去面试大厂的核心数据库部门，开启第二段实习，实习到九月份转正，十二月毕业就能直接入职。&lt;/p&gt;
+
+&lt;p&gt;最后再聊一聊开源项目和GSoC。去年也说了，希望今年能够申请一个GSoC的项目，在给TinyKV提交过两个Pull Request以后，大概能了解到开源项目需要怎么样的贡献，另外，在学习分布式数据库的过程中也了解到很多的新技术，希望能把Proposal写得漂亮，详实一点，最好能申请到和数据库相关的工作。如果真的能够申请下来，那么这无疑是简历上的巨大两点。在开源项目方面，我非常看好PingCAP的前景。随着信息化程度加深，需要存储的数据指数级别增加，开源数据库必然是大势所趋，大厂有能力自己研发，小厂只能寻求开源的解决方案，MySQL的方案实在不够优雅，PingCAP的HTAP相当诱人。另外，我认为他们做Share-Nothing的结构也是出于小厂没有能力搭建分布式文件系统的考虑。如果能去PingCAP实习，也不失为一个好选择。&lt;/p&gt;
+
+&lt;p&gt;回顾去年，最大的收获是发现了自己过去四年都在白混，如果能在本科四年确定要学的东西并且认真学下去，那我应该能找到一份不错的工作。但是现在也算是因祸得福，虽说也不知道算不算福气，走上了分布式数据库的道路，如果能在这条路上走下去，应该能成为核心团队的成员，35岁危机也小一些。现在，我总算是知道了要学什么——分布式数据库，怎么学——看国外公开课，做作业，参与开源，希望我能在这条路上好好走下去。&lt;/p&gt;
+
+&lt;p&gt;最后的最后，祝我自己找到一份不错的实习，拿到GSoC的项目，学习未知的知识时能够融会贯通，走在历史的进程上。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="essay" /><summary type="html">转眼又是农历新年，家家户户辞旧迎新。在年交之时，总结过去，展望未来，这是去年我给自己定下的目标。</summary></entry><entry><title type="html">共识性算法的发展</title><link href="http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95" rel="alternate" type="text/html" title="共识性算法的发展" /><published>2020-12-05T18:00:00+08:00</published><updated>2020-12-05T18:00:00+08:00</updated><id>http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95</id><content type="html" xml:base="http://localhost:4000/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">&lt;p&gt;本文是工程实践的一篇总结，上图为达成共识。&lt;/p&gt;
 
 &lt;p&gt;在分布式系统中，由于机器可能宕机，网络可能短连等许多问题，所以如何保证多个副本之间的一致性成为了最重要的问题之一，而Paxos算法就是解决这个问题的算法。&lt;/p&gt;
 
@@ -942,153 +970,4 @@ t^{TM}_{safe}:事务管理器能保证的安全时间&lt;/script&gt;
 
 &lt;h2 id=&quot;总结&quot;&gt;总结&lt;/h2&gt;
 
-&lt;p&gt;Amazon Aurora中描述的技术看起似乎很通用，使用WAL代替MySQL的信息，在存储节点执行命令而不是在本机执行，使用Chain Replication等等。但是能将这些技术恰到好处地使用在实际的系统中，并进行优化才是大厂的技术底蕴。比如Log的设计这一块，论文中就介绍地相当模糊，读写操作的细节也没有纰漏。这篇论文恐怕只算是对Aurora的惊鸿一瞥，真的想了解实现细节还得去Amazon内部看看。毕竟，Aurora在每个事务的IO花费的1/8，而事务处理量是MySQL的35倍，这可不是简单的系统设计就能完成的。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">Amazon在2017年的SIGMOD上发表了论文对Amazon Aurora进行了介绍，简要描述了他们由于对传统MySQL性能的不满，而设计了Aurora来代替，其性能有相当大的提升。从时间和公司我们就可以看出，这是比较新的工业界的解决方案，有很高的学习参考价值。</summary></entry><entry><title type="html">浅谈Primary-Back Replication和Chain Replication</title><link href="http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication" rel="alternate" type="text/html" title="浅谈Primary-Back Replication和Chain Replication" /><published>2020-07-26T18:00:00+08:00</published><updated>2020-07-26T18:00:00+08:00</updated><id>http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back%20Replication%E5%92%8CChain%20Replication</id><content type="html" xml:base="http://localhost:4000/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication">&lt;p&gt;上图为Google提供的贪吃蛇游戏&lt;/p&gt;
-
-&lt;p&gt;前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。&lt;/p&gt;
-
-&lt;h2 id=&quot;机器同步&quot;&gt;机器同步&lt;/h2&gt;
-
-&lt;p&gt;为了能够实现集群能够及时接管服务，并提供相同的服务，集群需要保证不同机器之间的数据一致性。我们上面提到，要实现共识需要使用Paxos或者Raft算法，而我们需要对什么东西达成共识呢？这就要提到实现机器同步的两种方法，分别是State Transfer和Replicated state machine，其中差别如下&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;State Transfer：主机器将本身的状态变化全部传送给其他机器。&lt;/p&gt;
-
-  &lt;p&gt;Replicated State Machine：由于业务的很多情况符合状态机的定义，所以只要保证所有机器初试状态相同，那么以相同的顺序执行相同指令后，它们的状态也是相同的。&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;举个例子，客户端发送{X=1，Y=X}的指令给集群。在State Transfer中，主机器执行这个操作后，将它发生变化的数据和值发送给其他机器，也就是{X=1，Y=1}，然后其他机器将自身的数据修改为对应的值，以此实现各机器的数据一致性。而在Replication State Machine中，主机器发送{X=1，Y=X}的指令给其他机器，要求其他机器也执行这一操作，按照状态机的状态变化，也能实现数据一致性。&lt;/p&gt;
-
-&lt;p&gt;State Transfer的优点是不会消耗其他机器的计算能力，但是在实际情况下，发生变化的数据量比较大，它对集群的带宽和延迟要求都很搞。Replicated State Machine由于只发送指令，所以传输的数据量比较小，但是它要求各机器在本地执行指令，所以对机器的计算能力有一定要求。根据实际情况，一般集群中各机器的性能相当，所以计算能力不会成为瓶颈，而为了保证快速响应客户要求，必须尽量减少传输的延迟，State Transfer由于一次性传输的数据量大，所以在网络的传输延迟上很难实现要求。因此Replicated State Machine成为实际上的解决方案。&lt;/p&gt;
-
-&lt;h2 id=&quot;vmft&quot;&gt;VM—FT&lt;/h2&gt;
-
-&lt;p&gt;VMware在&lt;a href=&quot;http://nil.csail.mit.edu/6.824/2017/papers/vm-ft.pdf&quot;&gt;《The Design of a Practical System for Fault-Tolerant Virtual Machines》&lt;/a&gt;中介绍了基于虚拟机实现的Primary-Backup Replication的容错解决方案。其本质就是使用Replicated State Machine实现主从的数据一致性。&lt;/p&gt;
-
-&lt;h3 id=&quot;deterministic-replay&quot;&gt;Deterministic Replay&lt;/h3&gt;
-
-&lt;p&gt;在VM-FT中，它们将指令在副机器的执行称为Deterministic Replay。由于和数据库软件不同，有一些系统命令和时间息息相关，比如中断和时间戳，考虑到传输延迟，这就会使命令执行的结果不同，从而导致数据的不一致。所以这就给系统设计带来一些问题，论文将此分为三个目标&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;ol&gt;
-    &lt;li&gt;正确收集所有的非确定（Non-Deterministic）事件和操作，保证有在执行时有足够的信息在Replay时来修正操作&lt;/li&gt;
-    &lt;li&gt;正确地在副机器上Replay非确定的事件和操作&lt;/li&gt;
-    &lt;li&gt;保证以上两点不会降低机器性能&lt;/li&gt;
-  &lt;/ol&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;由于这个系统运行在VMware上，所以VMware可以收集所有它想要的信息并将其存储在文件中，能够正确地实现第一个目标。然后，主机器通过Logging Channel将需要执行的操作和相关的补充信息传递给副机器，因此可以保证第二个目标。在实际的测试中，VMware的实现也能够保证机器的性能，满足了第三点。&lt;/p&gt;
-
-&lt;h3 id=&quot;ft-protocol&quot;&gt;FT Protocol&lt;/h3&gt;
-
-&lt;p&gt;由于主从机器通过Logging Channel进行通信，所以其中会产生一定的延迟而导致问题。假设主机器在收到请求后，在本地执行了该请求并将其传送给副机器，同时将结果反馈给客户端，但是副机器由于一些问题没有成功执行该指令，此时主从机器的数据是不一致的。如果主机器在此时崩溃，集群交由副机器负责，那么客户端再次查询数据就会得到不一样的结果。&lt;/p&gt;
-
-&lt;p&gt;因此，VMware提出了如下的要求：&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;&lt;strong&gt;输出规则&lt;/strong&gt;：主机器只有在副机器已经接收并返回了该指令的ACK 后，才能回复客户端。其中，副机器必须成功执行了该指令后才能回复ACK。&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;其实就是要求主机器在副机器也执行完指令后，实现了整个系统的一致性，再回复客户端。其具体流程如下：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/FT Protocol.png&quot; alt=&quot;FT Protocol&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;错误检测和恢复&quot;&gt;错误检测和恢复&lt;/h3&gt;
-
-&lt;p&gt;为了检测错误，VM-FT使用了以下两种手段&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;ol&gt;
-    &lt;li&gt;使用定期发送UDP来实现各机器间的Heartbeating&lt;/li&gt;
-    &lt;li&gt;由于整个系统基于VMware，所以可以通过检测Logging Channel的流量来查看是否正常工作&lt;/li&gt;
-  &lt;/ol&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;第一种方法和Raft中使用的类似，都是通过周期性地Heartbeats来检测是否活跃。第二种方法基于系统不断接受客户端请求的事实，只要客户发送了请求，为了实现主从同步，两者必须通过Logging Channel发送指令或者返回ACK，而如果相当长的时间内没有流量的话，就说明至少主机器可能已经崩溃。&lt;/p&gt;
-
-&lt;p&gt;一旦检测到主机器崩溃，那么副机器就会将Logging Channel中所有的指令执行完毕，以此到达主机器崩溃前的状态，然后在这个状态下回复客户端。而如果副机器崩溃了，主机器仅仅需要不再发送同步消息即可。&lt;/p&gt;
-
-&lt;h3 id=&quot;logging-channel优化&quot;&gt;Logging Channel优化&lt;/h3&gt;
-
-&lt;p&gt;为了保证主从的一致性，VM-FT还对Logging Channel进行了优化。如果副机器执行很慢，那么Logging Channel中的留存的信息过多，甚至填满了预留的空间，那么收到客户端请求时，主机器必须等待有空余空间才能发出请求，这使得客户端的体验很差。另一方面，如果主机器崩溃，副机器为了赶上主机器进度而需要花费的时间过多也会影响系统。所以VM-FT在通信中添加额外的信息，以此检测主从机器在执行同一指令上产生的延迟。如果这个延迟过大，VM-FT会减少分配给主机器的CPU算力，增加副机器的CPU算力，以此保证主从机器间的相对同步。&lt;/p&gt;
-
-&lt;h3 id=&quot;brain-split&quot;&gt;Brain-Split&lt;/h3&gt;
-
-&lt;p&gt;假设两台机器都能正常工作，但是由于通信原因，他们不能通过Heartbeat来确认对方正常工作，那么主机器仍然保持主机器的角色，而副机器则会将自己晋升为主机器，此时系统中有两个主机器，产生了脑裂（Brain-Split）现象。很不幸，这种情况不能通过系统自身解决，因为他们不能正常沟通，而在VM-FT中也没有使用基于Quorum的选举机制，所以只能通过外部解决。&lt;/p&gt;
-
-&lt;p&gt;在VM-FT中，由于主从共享磁盘，所以可以通过磁盘这个中介来解决。可以在磁盘中记录当前是否有主机器，如果有机器想要成为主机器，那么它必须访问磁盘，读取这个字段，确认当前没有主机器，才能成为主机器。在论文中，这个过程被称为test-and-set 。而在分布式的系统中，则必须通过第三方服务器才能实现这一功能。&lt;/p&gt;
-
-&lt;h3 id=&quot;vm-ft总结&quot;&gt;VM-FT总结&lt;/h3&gt;
-
-&lt;p&gt;这篇论文发表于2010年，虽然距离现在有一段时间了，但是仍能看到后续设计的一些影子。比如Logging Channel中设计了Buffer来保存指令，这个设计其实就相当于WAL，它对Brain-Split的解决方案在今天仍然实用。不过，由于整体的实现是基于VMware，所以和实际的分布式系统仍然有一点差别。总而言之，我们对这篇论文最大的学习是对主从设计系统的简单了解。&lt;/p&gt;
-
-&lt;p&gt;遗憾的是，这篇文章没有讨论多个副机器的情况，也就是说，没有使用Paxos算法实现多个副机器的一致性。&lt;/p&gt;
-
-&lt;h2 id=&quot;craq&quot;&gt;CRAQ&lt;/h2&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://pdos.csail.mit.edu/6.824/papers/craq.pdf&quot;&gt;《Object Storage on CRAQ High-throughput chain replication for read-mostly workloads》&lt;/a&gt;使用了一种类似于链表的复制模型Chain Replication。和Raft以及上面提到的主从模型不同，这个模型用很简单的方法就保证了数据的一致性。&lt;/p&gt;
-
-&lt;h3 id=&quot;chain-replication&quot;&gt;Chain Replication&lt;/h3&gt;
-
-&lt;p&gt;Chain Replication将每个结点连接成链表。其中写请求只能由头结点处理，读请求只能由尾节点负责。具体流程如下图：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/cr.png&quot; alt=&quot;cr&quot; /&gt;&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;写请求：&lt;/p&gt;
-
-  &lt;ol&gt;
-    &lt;li&gt;头节点接受写请求，执行完毕后将其转发给后一个节点&lt;/li&gt;
-    &lt;li&gt;所有节点都执行相关指令，同时将请求转发到下一个节点&lt;/li&gt;
-    &lt;li&gt;等到尾节点也执行完相关指令后，会给上一个节点发送ACK&lt;/li&gt;
-    &lt;li&gt;所有节点反向发送ACK，直到头节点&lt;/li&gt;
-    &lt;li&gt;头节点收到ACK后，将结果返回给客户端&lt;/li&gt;
-  &lt;/ol&gt;
-
-  &lt;p&gt;读请求：&lt;/p&gt;
-
-  &lt;p&gt;​	读请求只能由尾节点处理，尾节点返回当前数据&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;我们可以看到，只有当所有节点都执行完相关操作后，写请求才能得到结果，能保证写的一致性。由于尾节点是最后更新数据的节点，所以尾节点中的数据就是当前系统最新的一致性数据，读请求总能得到已经达成一致的数据。这个模型很简单地实现了读写的数据一致性，但是问题是，所有的读操作都由尾节点来处理，相当于整个系统的读取压力都来到了尾节点，尾节点很可能崩溃。所以这篇论文提出了一些改进。&lt;/p&gt;
-
-&lt;h3 id=&quot;chain-replication-with-apportioned-queriescraq&quot;&gt;Chain Replication with Apportioned Queries（CRAQ）&lt;/h3&gt;
-
-&lt;p&gt;这篇论文为了减少尾节点的压力，允许所有结点处理读请求，也就是名字中Apportioned Queries的含义。但是，由于读请求和写请求时并发的，有可能出现结点数据不一致时的读请求。所以这里还需要额外的处理。&lt;/p&gt;
-
-&lt;p&gt;首先考虑最简单的情况，即整个系统数据保持一致的情况。这时，无论从哪个节点读取，数据都是正常的。示意图如下&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/craq clean read.png&quot; alt=&quot;craq&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;其次，我们来考虑在处理写请求的同时，处理读请求的情况。其示意图如下&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/craq dirty read.png&quot; alt=&quot;craq read&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;图中，头节点接受了写请求，并将其传送给第二个节点，第二个节点已经处理完毕。但此时，第三个节点和尾节点都还未进行相应的处理，导致前两个节点和后两个节点的数据不一致。CRAQ通过为数据添加版本并存储多个版本的数据来解决这一问题。&lt;/p&gt;
-
-&lt;p&gt;一次完整的写请求完成后，整个系统仍然能保证数据一致性，唯一不能保证的就是上图中写到一半的情况。其中，已经处理写请求的节点和尾节点数据不一致，而未处理写请求的节点则保持一致。所以，CRAQ要求处理完写请求的节点把自己标记为Dirty，而未处理的则无需标记。另一方面，尾节点始终存储能被整个系统承认的数据，即最新的保持了一致性的数据。所以，为了确定当前应该返回的数据，Dirty节点应该询问尾节点应当返回数据的版本。&lt;/p&gt;
-
-&lt;p&gt;这张图中的绿色圆柱表示数据库，我们可以看到，已经处理完写请求的两个节点的数据库中存有两个版本V1和V2的数据K，而后两个节点则只有V1版本的数据K。此时，第二个节点收到读请求，由于其数据库内有两个版本的数据K，而且本身标记为Dirty，所以它需要向尾节点发送询问请求。尾节点回复其应返回版本V1的数据K，此节点就按照尾节点的指示回复客户端V1版本的数据K。&lt;/p&gt;
-
-&lt;p&gt;综上所述，由于无论在CR还是CRAQ中，尾节点所存储的数据都是最新的具有一致性的数据，那么在可能出现的并发读写情况下，只需要向尾节点询问相关数据的版本，就可以确定应该回复的数据。&lt;/p&gt;
-
-&lt;h3 id=&quot;membership-change-和-failure-recovery&quot;&gt;Membership Change 和 Failure Recovery&lt;/h3&gt;
-
-&lt;p&gt;由于CRAQ中节点的结构类似于双向链表，所以Failure Recovery的策略其实就是Membership Change中的删除节点类似，也就是双向链表中节点的删除。设要删除的节点为D，某节点为N，其具体情况如下&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;如果D是N的后继：N需要把其所有数据传送给其新的后继。因为D有可能是上一节图中第二个节点的情况，那么写请求就不能传送给后继节点。如果D是尾节点，那么N需要D把所有ACK都反向传输完毕后再删除节点。&lt;/p&gt;
-
-  &lt;p&gt;如果D是N的前驱：N需要把数据传送给其新的前驱。同时，如果D是头节点，N需要成为新的头结点。&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;节点的添加大同小异，只需要在新节点A是头结点和尾节点时进行特殊处理即可。&lt;/p&gt;
-
-&lt;h3 id=&quot;craq总结&quot;&gt;CRAQ总结&lt;/h3&gt;
-
-&lt;p&gt;CRAQ对原有的Chain Replication进行了改进，平摊了读请求的压力，还用简单的模型保证了数据的强一致性。但是另一方面，从写请求的流程来看，需要线性地流经每一个节点势必增加系统的延迟。而Raft等算法则取决于单个机器的最长时间，如下图所示。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/images/compare.png&quot; alt=&quot;compare&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;假设使用RAFT和CRAQ的系统中都有三个节点，黄色表示向非主节点写入指令需要的时间，蓝色表示该节点返回ACK花费的时间。可以看到，由于RAFT算法是并行的，它的实际时间取决于单个节点花费的最长时间。而CRAQ是串行的，它的时间是所有结点花费的时间总和。&lt;/p&gt;
-
-&lt;p&gt;如果想要使用CRAQ的模型进行备份，那么节点数量一定不能太多，最好节点不要跨机房，否则在网络传输上花费的时间就十分庞大了。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">前面两篇文章，我们讨论了分布式系统中为了维护一致性所使用的共识性算法Paxos和Raft。这些算法保证了各机器之间数据的一致性，但是Paxos算法针对的是平等的Replication策略，而Raft算法针对的是Primary-Back Replication策略。Replication策略和共识性算法的目的不同，它的设计是为了实现容错（Fault-Tolerance），即在一部分机器不可用后，仍能保证正常提供服务。下面，我将简要描述一下6.824中讨论的两种复制模型Primary-Back Replication和Chain Replication。</summary></entry></feed>
+&lt;p&gt;Amazon Aurora中描述的技术看起似乎很通用，使用WAL代替MySQL的信息，在存储节点执行命令而不是在本机执行，使用Chain Replication等等。但是能将这些技术恰到好处地使用在实际的系统中，并进行优化才是大厂的技术底蕴。比如Log的设计这一块，论文中就介绍地相当模糊，读写操作的细节也没有纰漏。这篇论文恐怕只算是对Aurora的惊鸿一瞥，真的想了解实现细节还得去Amazon内部看看。毕竟，Aurora在每个事务的IO花费的1/8，而事务处理量是MySQL的35倍，这可不是简单的系统设计就能完成的。&lt;/p&gt;</content><author><name>Trafalgar Ricardo Lu</name></author><category term="distributedsystem" /><summary type="html">Amazon在2017年的SIGMOD上发表了论文对Amazon Aurora进行了介绍，简要描述了他们由于对传统MySQL性能的不满，而设计了Aurora来代替，其性能有相当大的提升。从时间和公司我们就可以看出，这是比较新的工业界的解决方案，有很高的学习参考价值。</summary></entry></feed>
