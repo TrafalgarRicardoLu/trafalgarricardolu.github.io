@@ -28,9 +28,10 @@ author:
   pronouns         : # example: "she/her"  
   bio              : ""
   location         : "China"
+  location         : "China"
   employer         : "Bytedance"
   uri              : # URL
-  email            : "none@example.org" 
+  email            : "trafalgarricardolu@example.org" 
 
   # Academic websites
   academia         : # URL

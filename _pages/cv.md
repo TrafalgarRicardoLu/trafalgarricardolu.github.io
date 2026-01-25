@@ -9,56 +9,39 @@ redirect_from:
 
 {% include base_path %}
 
+## About Me
+
+I am a software engineer with a strong background in distributed systems and database technologies. Currently pursuing a Master's degree in Software Engineering at the University of Science and Technology of China, I have hands-on experience in developing and optimizing distributed storage systems, database internals, and big data processing frameworks. My professional journey includes internships at PingCAP and ByteDance, where I contributed to TiDB ecosystem projects and block storage systems. I also participated in Google Summer of Code, working on PostgreSQL extensions. With a solid foundation in computer science from Hangzhou Dianzi University, I am passionate about building reliable, efficient, and scalable software systems.
+
 Education
 ======
-* Ph.D in Version Control Theory, GitHub University, 2018 (expected)
-* M.S. in Jekyll, GitHub University, 2014
-* B.S. in GitHub, GitHub University, 2012
+* 2020.9-2024.6 M.S. University of Science and Technology of China, Software Engineering
+* 2016.9-2020.6 B.S. Hangzhou Dianzi University, Computer Science and Technology
 
 Work experience
 ======
-* Spring 2024: Academic Pages Collaborator
-  * GitHub University
-  * Duties includes: Updates and improvements to template
-  * Supervisor: The Users
+* TiDB Ecosystem Intern PingCAP 2022.5 – 2022.8
+  * Supported TiSpark to insert data using Insert SQL. PR2471
+  * Added permission validation to TiSpark's DataSource API. PR2366
+  * Reproduced, diagnosed and fixed a bug that could cause data loss. PR2433
 
-* Fall 2015: Research Assistant
-  * GitHub University
-  * Duties included: Merging pull requests
-  * Supervisor: Professor Hub
+* Block Storage Intern ByteDance 2021.8 – 2022.3
+  * Completed the design of Exactly-Once semantics based on existing theory in the original architecture
+  * Participated in developing Extent CRC validation, improved end-to-end CRC checking, and provided rich debugging information
+  * Coordinated externally to decommission three old version clusters, reducing maintenance costs
 
-* Summer 2015: Research Assistant
-  * GitHub University
-  * Duties included: Tagging issues
-  * Supervisor: Professor Git
-  
-Skills
-======
-* Skill 1
-* Skill 2
-  * Sub-skill 2.1
-  * Sub-skill 2.2
-  * Sub-skill 2.3
-* Skill 3
+* PostgreSQL-pg_systat Google Summer of Code 2021.6 – 2021.8
+  * Added pg_stat_statements, pg_stat_progress_cope, and pg_buffercache panels
+  * Increased database version and extension installation status checks, backward compatibility, and reduced unnecessary queries
 
-Publications
+Related Experience
 ======
-  <ul>{% for post in site.publications reversed %}
-    {% include archive-single-cv.html %}
-  {% endfor %}</ul>
-  
-Talks
-======
-  <ul>{% for post in site.talks reversed %}
-    {% include archive-single-talk-cv.html  %}
-  {% endfor %}</ul>
-  
-Teaching
-======
-  <ul>{% for post in site.teaching reversed %}
-    {% include archive-single-cv.html %}
-  {% endfor %}</ul>
-  
-Service and leadership
-======
-* Currently signed in to 43 different slack teams
+* TinyKV TiDB Talent Project
+  * Implemented the Raft algorithm for synchronizing server-side data
+  * Implemented support for adding/removing nodes, splitting regions, and load balancing
+  * Implemented distributed transactions based on MVCC and Percolator algorithms
+
+* CMU15-445 Course Projects
+  * Implemented Buffer Pool replacement using Clock algorithm
+  * Implemented database index based on Hashtable
+  * Implemented ARISE algorithm for database crash recovery
