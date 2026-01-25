@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>总结Google的三驾马车</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="总结Google的三驾马车" />
+    <meta property="og:description" content="前面的三篇文章，我们谈了Google的三驾马车，现在我们总体地对它们进行一个总结。 要想对这三篇文章作总结，那么就必须要对这三篇文章的背景更加仔细地了解。文章开头的介绍是从总体的角度来看的，但是我最近看到一篇关于Jeff Dean的文章，从Jeff Dean的角度更加详细地介绍了当时的困局。我下面将引用一些该文章的中内容，并以此讨论三架马车的设计出发点。 2000 年 3 月的一天，谷歌公司最顶尖的六位工程师齐聚某临时“作战指挥室”。当时的谷歌，正面临着前所未有的紧急状况。前一年 10 月，谷歌用于爬取 Web 以建立网络内容索引的核心系统宣告停止工作。虽然用户仍然可以通过 http://google.com 网站进行结果查询，但他们收到的结果实际上已经过期了五个月。由此引发的利益冲突远超工程师们的想象……就在当时，互联网的体量在一年之内增长了一倍。 相当有趣的是，哪怕谷歌的爬虫已经崩溃了快半年，所有的查询结果都是六个月之前的，他们仍然敢和雅虎谈合作。也就是当时互联网内容更新不够快，要是放在今天，一个星期就够谷歌倒闭了。 在作战室中度过的第五天，Jeff 与 Sanjay 开始怀疑其中的问题不是出在逻辑层面，而属于物理范畴。他们将混乱的索引文件转换为最原始的表示形式：二进制代码。更具体地讲，他们想了解机器到底看到了什么。 Sanjay 的显示器上出现了一系列粗体的 0 和 1，每一行代表一个索引词。Sanjay 发现，其中某个本应是 0 的数位却显示成了 1。接下来，Jeff 与 Sanjay 将所有错误排序的词语汇总了起来，并发现了其中的共通模式——每个词语都存在相同的问题。他们机器上的内存芯片发生了故障。 Sanjay 不由自主将目光投向 Jeff。几个月以来，谷歌一直在经历各种各样且持续增加的硬件故障。问题是，随着谷歌业务的快速发展，其计算基础设施也在不断扩大。计算机硬件发生故障的概率一般是很低的，因此问题堆积起来之后，一下子引发了破坏性的影响。电线磨损、磁盘损坏、主板过热。相当一部分设备根本无法一次性成功启动，也有一些莫名其妙地速度变慢了。 我们都会使用“搜索 Web”或者“搜索网络”的说法，但实际上这种表述并不准确。实际上，我们的搜索引擎遍历的是 Web 的索引——或者说地图。在 1996 年还在使用 BackRub 这个名号时，谷歌的索引地图还很小，足以安装在 Page 宿舍中的个人电脑里。但到 2000 年 3 月，其规模已经超出了任何超级计算机的处理能力。 要跟上如此迅猛的发展速度，谷歌公司唯一的方法就是购买消费级设备并将其组成一个集群。由于消费级设备当中有半数成本来自对谷歌公司毫无意义的“垃圾”——包括软盘驱动器与金属机箱，因此他们决定直接订购主板与磁盘并将其连接起来。谷歌在加利福尼亚州圣克拉拉市的一栋楼里将 1500" />
+    <meta property="og:url" content="http://localhost:4000/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/troika.jpg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-08-13T19:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-08-13T19:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="总结Google的三驾马车" />
+    <meta name="twitter:description" content="前面的三篇文章，我们谈了Google的三驾马车，现在我们总体地对它们进行一个总结。 要想对这三篇文章作总结，那么就必须要对这三篇文章的背景更加仔细地了解。文章开头的介绍是从总体的角度来看的，但是我最近看到一篇关于Jeff Dean的文章，从Jeff Dean的角度更加详细地介绍了当时的困局。我下面将引用一些该文章的中内容，并以此讨论三架马车的设计出发点。 2000 年 3 月的一天，谷歌公司最顶尖的六位工程师齐聚某临时“作战指挥室”。当时的谷歌，正面临着前所未有的紧急状况。前一年 10 月，谷歌用于爬取 Web 以建立网络内容索引的核心系统宣告停止工作。虽然用户仍然可以通过 http://google.com 网站进行结果查询，但他们收到的结果实际上已经过期了五个月。由此引发的利益冲突远超工程师们的想象……就在当时，互联网的体量在一年之内增长了一倍。 相当有趣的是，哪怕谷歌的爬虫已经崩溃了快半年，所有的查询结果都是六个月之前的，他们仍然敢和雅虎谈合作。也就是当时互联网内容更新不够快，要是放在今天，一个星期就够谷歌倒闭了。 在作战室中度过的第五天，Jeff 与 Sanjay 开始怀疑其中的问题不是出在逻辑层面，而属于物理范畴。他们将混乱的索引文件转换为最原始的表示形式：二进制代码。更具体地讲，他们想了解机器到底看到了什么。 Sanjay 的显示器上出现了一系列粗体的 0 和 1，每一行代表一个索引词。Sanjay 发现，其中某个本应是 0 的数位却显示成了 1。接下来，Jeff 与 Sanjay 将所有错误排序的词语汇总了起来，并发现了其中的共通模式——每个词语都存在相同的问题。他们机器上的内存芯片发生了故障。 Sanjay 不由自主将目光投向 Jeff。几个月以来，谷歌一直在经历各种各样且持续增加的硬件故障。问题是，随着谷歌业务的快速发展，其计算基础设施也在不断扩大。计算机硬件发生故障的概率一般是很低的，因此问题堆积起来之后，一下子引发了破坏性的影响。电线磨损、磁盘损坏、主板过热。相当一部分设备根本无法一次性成功启动，也有一些莫名其妙地速度变慢了。 我们都会使用“搜索 Web”或者“搜索网络”的说法，但实际上这种表述并不准确。实际上，我们的搜索引擎遍历的是 Web 的索引——或者说地图。在 1996 年还在使用 BackRub 这个名号时，谷歌的索引地图还很小，足以安装在 Page 宿舍中的个人电脑里。但到 2000 年 3 月，其规模已经超出了任何超级计算机的处理能力。 要跟上如此迅猛的发展速度，谷歌公司唯一的方法就是购买消费级设备并将其组成一个集群。由于消费级设备当中有半数成本来自对谷歌公司毫无意义的“垃圾”——包括软盘驱动器与金属机箱，因此他们决定直接订购主板与磁盘并将其连接起来。谷歌在加利福尼亚州圣克拉拉市的一栋楼里将 1500" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/troika.jpg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/troika.jpg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6"
+    },
+    "description": "前面的三篇文章，我们谈了Google的三驾马车，现在我们总体地对它们进行一个总结。 要想对这三篇文章作总结，那么就必须要对这三篇文章的背景更加仔细地了解。文章开头的介绍是从总体的角度来看的，但是我最近看到一篇关于Jeff Dean的文章，从Jeff Dean的角度更加详细地介绍了当时的困局。我下面将引用一些该文章的中内容，并以此讨论三架马车的设计出发点。 2000 年 3 月的一天，谷歌公司最顶尖的六位工程师齐聚某临时“作战指挥室”。当时的谷歌，正面临着前所未有的紧急状况。前一年 10 月，谷歌用于爬取 Web 以建立网络内容索引的核心系统宣告停止工作。虽然用户仍然可以通过 http://google.com 网站进行结果查询，但他们收到的结果实际上已经过期了五个月。由此引发的利益冲突远超工程师们的想象……就在当时，互联网的体量在一年之内增长了一倍。 相当有趣的是，哪怕谷歌的爬虫已经崩溃了快半年，所有的查询结果都是六个月之前的，他们仍然敢和雅虎谈合作。也就是当时互联网内容更新不够快，要是放在今天，一个星期就够谷歌倒闭了。 在作战室中度过的第五天，Jeff 与 Sanjay 开始怀疑其中的问题不是出在逻辑层面，而属于物理范畴。他们将混乱的索引文件转换为最原始的表示形式：二进制代码。更具体地讲，他们想了解机器到底看到了什么。 Sanjay 的显示器上出现了一系列粗体的 0 和 1，每一行代表一个索引词。Sanjay 发现，其中某个本应是 0 的数位却显示成了 1。接下来，Jeff 与 Sanjay 将所有错误排序的词语汇总了起来，并发现了其中的共通模式——每个词语都存在相同的问题。他们机器上的内存芯片发生了故障。 Sanjay 不由自主将目光投向 Jeff。几个月以来，谷歌一直在经历各种各样且持续增加的硬件故障。问题是，随着谷歌业务的快速发展，其计算基础设施也在不断扩大。计算机硬件发生故障的概率一般是很低的，因此问题堆积起来之后，一下子引发了破坏性的影响。电线磨损、磁盘损坏、主板过热。相当一部分设备根本无法一次性成功启动，也有一些莫名其妙地速度变慢了。 我们都会使用“搜索 Web”或者“搜索网络”的说法，但实际上这种表述并不准确。实际上，我们的搜索引擎遍历的是 Web 的索引——或者说地图。在 1996 年还在使用 BackRub 这个名号时，谷歌的索引地图还很小，足以安装在 Page 宿舍中的个人电脑里。但到 2000 年 3 月，其规模已经超出了任何超级计算机的处理能力。 要跟上如此迅猛的发展速度，谷歌公司唯一的方法就是购买消费级设备并将其组成一个集群。由于消费级设备当中有半数成本来自对谷歌公司毫无意义的“垃圾”——包括软盘驱动器与金属机箱，因此他们决定直接订购主板与磁盘并将其连接起来。谷歌在加利福尼亚州圣克拉拉市的一栋楼里将 1500"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="总结Google的三驾马车" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="13 August 2020">13 August 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">总结Google的三驾马车</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/troika.jpg)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>前面的三篇文章，我们谈了Google的三驾马车，现在我们总体地对它们进行一个总结。</p>
+
+<p>要想对这三篇文章作总结，那么就必须要对这三篇文章的背景更加仔细地了解。文章开头的介绍是从总体的角度来看的，但是我最近看到一篇关于Jeff Dean的文章，从Jeff Dean的角度更加详细地介绍了当时的困局。我下面将引用一些该文章的中内容，并以此讨论三架马车的设计出发点。</p>
+
+<blockquote>
+  <p>2000 年 3 月的一天，谷歌公司最顶尖的六位工程师齐聚某临时“作战指挥室”。当时的谷歌，正面临着前所未有的紧急状况。前一年 10 月，谷歌用于爬取 Web 以建立网络内容索引的核心系统宣告停止工作。虽然用户仍然可以通过 http://google.com 网站进行结果查询，但他们收到的结果实际上已经过期了五个月。由此引发的利益冲突远超工程师们的想象……就在当时，互联网的体量在一年之内增长了一倍。</p>
+</blockquote>
+
+<p>相当有趣的是，哪怕谷歌的爬虫已经崩溃了快半年，所有的查询结果都是六个月之前的，他们仍然敢和雅虎谈合作。也就是当时互联网内容更新不够快，要是放在今天，一个星期就够谷歌倒闭了。</p>
+
+<blockquote>
+  <p>在作战室中度过的第五天，Jeff 与 Sanjay 开始怀疑其中的问题不是出在逻辑层面，而属于物理范畴。他们将混乱的索引文件转换为最原始的表示形式：二进制代码。更具体地讲，他们想了解机器到底看到了什么。</p>
+
+  <p>Sanjay 的显示器上出现了一系列粗体的 0 和 1，每一行代表一个索引词。Sanjay 发现，其中某个本应是 0 的数位却显示成了 1。接下来，Jeff 与 Sanjay 将所有错误排序的词语汇总了起来，并发现了其中的共通模式——每个词语都存在相同的问题。他们机器上的内存芯片发生了故障。</p>
+
+  <p>Sanjay 不由自主将目光投向 Jeff。几个月以来，谷歌一直在经历各种各样且持续增加的硬件故障。问题是，随着谷歌业务的快速发展，其计算基础设施也在不断扩大。计算机硬件发生故障的概率一般是很低的，因此问题堆积起来之后，一下子引发了破坏性的影响。电线磨损、磁盘损坏、主板过热。相当一部分设备根本无法一次性成功启动，也有一些莫名其妙地速度变慢了。</p>
+
+  <p>我们都会使用“搜索 Web”或者“搜索网络”的说法，但实际上这种表述并不准确。实际上，我们的搜索引擎遍历的是 Web 的索引——或者说地图。在 1996 年还在使用 BackRub 这个名号时，谷歌的索引地图还很小，足以安装在 Page 宿舍中的个人电脑里。但到 2000 年 3 月，其规模已经超出了任何超级计算机的处理能力。</p>
+
+  <p>要跟上如此迅猛的发展速度，谷歌公司唯一的方法就是购买消费级设备并将其组成一个集群。由于消费级设备当中有半数成本来自对谷歌公司毫无意义的“垃圾”——包括软盘驱动器与金属机箱，因此他们决定直接订购主板与磁盘并将其连接起来。谷歌在加利福尼亚州圣克拉拉市的一栋楼里将 1500 套这样的设备堆到了六英尺高； 但由于硬件故障，其中只有 1200 套设备能够正常工作。另外，随机发生的故障也在不断破坏着这套系统。为了维持业务运转，谷歌方面必须将这些计算机构建成一套无缝且具备弹性的整体。</p>
+</blockquote>
+
+<p>从这里，我们一方面可以看出Jeff和Sanjay确实厉害，一般人最多查到逻辑层面，现在他们直接怀疑是硬件的问题。另一方面，这也说明了为什么GFS，Bigtable和MapReduce都要将容错（Fault-Tolerance）作为重要的考虑因素，并且都考虑最坏的情况，甚至在GFS中使用了多个备份的机器。</p>
+
+<p>这里必须要吹的是，GFS能充分发挥这么一堆“商业垃圾”的性能实在是强得可怕。哪怕是读过GFS的论文，对GFS有了初步的了解，我也很难想象它能在这么差劲的机器上撑起足够能用的存储体系，而且还能够保证数据的完整性。</p>
+
+<blockquote>
+  <p>在 2003 年的四个月当中，Jeff 与 Sanjay 帮助谷歌完成了创立以来规模最大的一次升级。他们所使用的软件，就是后来赫赫有名的 MapReduce。这次升级的灵感，来自他们在对谷歌爬取工具与索引器进行第三次重写的过程。他们意识到，每一次他们解决一个重要问题，所面向的都是地理分布广阔且个别设备可能不太可靠的无数计算机上协同运行。因此，只有对解决方案进行全面推广，才能避免一次又一次重复面对同样的问题。更具体地讲，应该创建一款工具，确保谷歌公司的每一位程序员都能够利用其运行数据中心内的机器——换言之，将谷歌的所有基础设施视为一台硕大无朋的整体计算机。</p>
+
+  <p>MapReduce 的意义在于把可能令人费解的复杂流程整理得井然有序。在 MapReduce 出现之前，每一位程序员都必须弄清楚要如何对数据进行分割与分发，分配工作并自行负责硬件故障的处理。MapReduce 为编程人员提供了一种用于考量此类问题的结构化方法。正如厨师在食材下锅之前要先对其进行分类一样，MapReduce 也要求程序员将自己的任务分成两个阶段。首先，程序员需要告诉每台机器如何完成任务的“Map”阶段（比如计算某个词语在网页中出现的次数）； 接下来，程序员要编写指令以实现全部机器结果的“Reduce”（例如将上述结果相加）。MapReduce 可以处理分发工作的细节，从而帮助程序员摆脱这些复杂且枯燥的任务。</p>
+
+  <p>在接下来的一年当中，Jeff 与 Sanjay 以 MapReduce 任务的形式重写了谷歌的爬取与索引系统。很快，当其他工程师意识到 MapReduce 的强大力量后，他们也开始利用其处理视频并在谷歌地图上渲染图块。MapReduce 非常简单，能够轻松消化各类新型任务。谷歌的业务有着明确的所谓“昼夜使用曲线”——即白天的流量比晚间更多，而 MapReduce 任务则开始使用闲置部分的容量。正如生物会在梦中回顾白天的经历，现在谷歌也在利用同样的方式处理自己的数据。</p>
+</blockquote>
+
+<p>从这里，我们就可以完全理解MapReduce的设计逻辑了。在这三篇文章发布的时候，谷歌几乎所有的重心都在搜索引擎上面，谷歌搜索引擎的核心就是PageRank算法，而URL之间的引用次数是PageRank重要的一部分。MapReduce要做的就是计算网页直接的引用次数，所以他们简单地将爬取的数据作为输入文件交给Map处理，当MapReduce都得到结果后，他们就能得到相关网页的引用次数，然后将其作为参数传入到PageRank中就能得到想要的答案。</p>
+
+<p>另外，由于夜间的流量较低，所以他们可以在晚上运行MapReduce程序而不影响用户体验。这也就解释了为什么谷歌能够容忍那么长的计算时间。</p>
+
+<p>简单地说，MapReduce之所以简单是因为它负责的计算就很简单，但是计算量很大，所以使用分布式的架构。MapReduce慢是因为谷歌根本不需要它快。所以MapReduce可能仅仅适用于谷歌和一些业务场景符合的公司。</p>
+
+<p>这篇文件中没有提到Bigtable，而且看起来MapReduce可以调用GFS而无需访问Bigtable，那么为什么Bigtable仍然成为人们津津乐道的技术，甚至在后来的Spanner中谷歌也使用了相当一部分的设计呢？那就是，数据库在业务逻辑中是无可替代的。</p>
+
+<p>数据库提供的不仅仅是数据的存储，更重要的是数据的读取。这里的存储和读取，不仅仅是完整的一致的，还要求是快速的。假如我们直接使用GFS，那么我们就没有完整的数据视图，需要像查文件一样查找数据，不仅效率低下，而且指定文件路径在编程上也是十分死板的做法。另一方面，GFS在数据写入方面也完全没有优化的处理。</p>
+
+<p>而在Bigtable中，由于Bigtable保证数据有序，那么读取和查找数据的效率会指数级别地提高。在写的方面，它使用WAL保证容错，使用Memtable保证高效，是GFS所不能比的。另一方面，它使用Column Family实现了类似于事务的功能，能够实现ACID的要求，这也是业务所强烈要求的。</p>
+
+<p>而且我相信，根据Bigtable的数据模型来看，爬虫爬下来的网页数据应该不是直接存入GFS，而是先存入Bigtable，然后通过Bigtable保存到GFS上的。因为Bigtable的数据模型怎么看都像是为了存储网页直接相互引用的信息设计的。而且，由于MapReduce产生的数据有可能在未来也被使用，这些数据被存入GFS。</p>
+
+<p>那么我们最后来总结一下三者的调用关系。谷歌使用爬虫爬取网页信息，并且把这些信息存入到Bigtable中，Bigtable会将这些数据排序并保存到GFS中。MapReduce为了得到PageRank的参数，会调用Bigtable中的数据，计算各网页的引用次数。计算完成后，MapReduce会将这些数据保存到GFS中以待下次使用。</p>
+
+<p>如果要对这三驾马车作出一个评价的话，那么应该这么说：在谷歌危急的时候，这三驾马车不仅力挽狂澜，而且为谷歌和其他互联网企业的发展指明了未来，是分布式系统的重要基石。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%9B%9E%E9%A1%BEMIT6.824">回顾MIT 6.824</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Spanner">
+                <div class="post-card-image" style="background-image: url(/assets/images/spanner.jpeg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Spanner">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Spanner</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce">
+                <div class="post-card-image" style="background-image: url(/assets/images/mapreduce.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Google的三驾马车之MapReduce</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">总结Google的三驾马车</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6&amp;url=https://jekyller.github.io/jasper2/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

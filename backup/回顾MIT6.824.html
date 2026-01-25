@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>回顾MIT 6.824</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E5%9B%9E%E9%A1%BEMIT6.824" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="回顾MIT 6.824" />
+    <meta property="og:description" content="上图为MIT 6.824教授Robert Morris。
+
+大概是在六月底，经过了一段时间的划水，决定开始学一点研究生该学的东西。之前 一直学的后端开发入门的技术，比如怎么使用Spring，MyBatis之类的框架，在学这些技术的过程中虽然听说了一些分布式系统的组件和原理，但是在那个时候觉得这些都是进阶的知识，大可以工作以后再认真学，就匆匆掠过。研究生嘛，总要学得深入一点，正好在知乎上听闻这门课的风评很好，今年又录了高清的授课视频，就决心跟着这门课学下去。
+
+6.824差不多是一节课读一篇论文，所以要想更好理解上课的内容，还是在课前就读完对应的论文比较好。于是我安排周一周三读论文，周二周四看视频，周五做实验，周日写论文读后感。这里说是读后感，也不过就是中文的摘要罢了。按照这样的进度，经过了大约一个的时间，我在八月第一个星期完成了全部的学习，这期间又被知乎安利去看了《Design Data-Intensive Application》。通过这些学习，我大概算是对分布式系统有了一个大致的了解。
+
+分布式系统结构
+
+分布式系统中有三个子系统，分别是分布式计算系统，分布式存储系统和分布式管理系统。在6.824中，主要讨论分布式存储系统，但通过两篇论文聊了聊分布式计算系统，但是没有涉及分布式管理系统。虽然这里分得很清楚，但是实际上来说，分布式存储系统提供数据给分布式计算系统，分布式管理系统负责监测相关信息，保证正常运行。
+
+分布式系统我们得从Google的三驾马车讲起。谷歌将分布式系统分成三级，GFS负责分布式文件系统，在GFS之上是Bigtable，负责分布式数据库，再上面是分布式计算系统MapReduce。这种分层几乎沿用至今，最多只在分布式数据库之前再加一层缓存。
+
+从更高的维度来看，当我们解决一致性问题以后，我们甚至可以把分布式系统看做是单机的。磁盘存文件对应文件系统，分布式数据库对应单机数据库，而计算则对应我们的代码逻辑。或者说，这反映了分布式系统设计的目标，让客户端感受不到“分布式”的存在，用起来跟单机完全一样。
+
+那么，我们以自底向上的顺序聊一聊整个架构中可能用到的技术和解决方案。
+
+分布式文件系统
+
+分布式文件系统设计之初的目标是存储更多的文件，也就是可拓展性（Scalability），但是在使用的过程中发现容错（Fault-Tolerance或者Resilience）也是一个很重要的目标，那么整个的系统的设计就必须围绕这两个点。
+
+首先考虑怎么实现可拓展性，GFD采用的办法是使用一个服务器存储所有文件的位置，读写文件都要访问这个节点拿到想要访问或添加的文件。这个想法类似于Linux的文件系统，元文件块存储FCB的位置，要读取FCB就要访问元文件块。这个方法简单而且有效，但是很遗憾，我不能拿其他的方案作比较，因为我暂时还没有读过其他的分布式论文，之后会去看看Ceph和PolarFS是怎么实现的。
+
+实现容错的通用方案是使用备份（Replica），当前节点宕机以后就使用备份接替工作。根据6.824和《DDIA》的内容，目前主要的备份方案分为主从复制和链式复制，其中主从复制又根据主节点的个数分为单主节点复制，多主节点复制和无主节点复制。单主节点的方案使用比较多，Spanner和许多系统都使用这种方案。根据《DDIA》的说法，MySQL的Tungsten Replicator，用于PostgreSQL的BDR以及用于Oracle的GoldenGate都使用了多主复制，但是我对这些还没有了解。无主复制在相当长的时间里都不是很流行，但是当Amazon开发了无主复制的Dynamo以后，就有相当多的公司和组织尝试用无主复制的方案开发工具。相较之下，链式复制就要低调得多，但是Amazon Aurora中使用了这一方案。
+
+虽然我们已经使用备份解决了容错的问题，但是另一个问题随之而生，如何保证多个备份之间的数据一致性？在主从复制中，经常使用Paxos，Raft和Zab来解决这些问题，而在链式复制中，由于数据会流经每一个节点，所以必然能够保证数据的一致性，只不过需要花费更久的延迟。
+
+另外一方面，为了追求高吞吐量，分布式文件系统会使用分片技术将数据分发到多个节点上，这样对数据的请求压力也能够被多个节点一起承担。在这里，为了实现数据均匀分布，会使用哈希算法决定数据位置。同时还会使用一致性哈希算法减少节点崩溃时需要的数据传输量。
+
+分布式数据库
+
+说完了分布式文件系统，我们继续聊分布式数据库。分布式数据库的目标包括数据一致性和事务管理两大目标。当然，肯定不仅限于这两点，上面提到的容错和可拓展性也是重要的目标，但是解决方案类似，也就不再讨论。
+
+在分布式数据库中，数据的一致性从脏读，幻读等隔离级别变成了如下的级别。遗憾的是，虽然6.824中用两三篇论文讨论过了这些问题，我对这部分的理解仍然相当有限，所以很难作进一步的解释。
+
+
+  Linearizable（线性）&gt; Sequential（顺序）&gt; Causal（因果）&gt; RyW(read your write)。
+
+
+不过可以确定的是，分布式数据库通过对事务的管理尽可能实现强的数据一致性。最广为人知的事务管理算法是2PC，但是2PC在两段提交的过程中可能会由于某一方节点宕机而失败，并且其效率很低，所以被渐渐抛弃。之后有人提出了TCC的方式，但是我也不是很了解。在这之后，分布式系统中引入了消息队列，由于队列的性质能够保证FIFS，所以在一定程度上解决了事务的先后问题，但是消息队列仍然有消息丢失等问题。特别要说的是，Spanner使用TrueTime实现了全球一致的时间并且使用这个时间一定程度上进行事务管理，是我看到的最好的方案。目前分布式事务仍然有很多问题需要解决，不失为一个不错的研究方向。
+
+数据库的另一个重要性能指标是数据读写的速度。当然，我们不能通过软件提高硬件的性能，但是可以通过合理的数据模型减少检索数据所需要的时间。Bigtable就使用了SSTable将数据有序存储提高性能，Spanner和F1数据库则使用父子表的设计支持关系型数据存储并加快检索。
+
+分布式计算
+
+分布式计算在课程中占比很少，主要讨论了两个方案，MapReduce和Spark。
+
+前者的特点是模型简单，但是需要已经准备好的数据，有点类似于批处理，这就注定了MapReduce不能用于快速响应的情景。另外，由于基础模型过于简单，在希望实现复杂逻辑的时候，编程就比较困难。这些问题导致MapReduce没有在今天大范围使用。
+
+Spark使用了流式计算的方案，每当有数据输入就能生成对应的结果。另外，Spark也支持比较复杂的操作，像JOIN和GROUP，相当程度上弥补了MapReduce的缺点。这使得在其推出后大受欢迎，在今天也有很多人使用。
+
+中间件
+
+目前的分布式系统中，除了上述的层级还有一些组件用于在各层之间协调，6.824介绍的Memcache就是其中的一种。
+
+Memcache用于用户层和数据库之间，由于查询数据需要经过磁盘，读写效率很低。所以Memcache将一些数据放在内存中，只有当Memcache中没有用户需要的数据时才去查询数据库，这就大大提高了查询效率。
+
+在分布式系统中还经常使用Zookeeper作为协调组件。Zookeeper提供一个运行在内存中的小型文件系统，系统可以使用这个文件系统实现锁服务，成员管理等相当多的功能。
+
+上面我们还提到了消息队列，现在的系统中也广泛使用类似于Kafka，RabbitMQ等组件来实现消息解耦，同时减少服务器压力。不过消息队列似乎仅在可以异步处理的情况下比较有效。
+
+课程内容
+
+可能是囿于课程时间的限制，6.824没有完整地讨论很多东西，比如Bigtable和Paxos就没有讨论。另外，我觉得课程的安排也有一些问题，比如它把MapReduce作为第一课，虽然MapReduce够简单，也很合适实验设置。但是我想一课可以安排Paxos或者Raft作为基础，在这之后可以完整详细地讨论谷歌的三驾马车，这之后再讨论分布式事务，最后讨论一下分布式计算。这门课程花了三节课的时间讨论区块链，这实在是不值得，我想最多只能花两节课时间再这上面。个人认为区块链的唯一用处是用Work Proof解决了拜占庭问题，但是Work Proof的花费太大以至于几乎不可能在实际中使用。
+
+另外要说的是这门课的实验。很难，真的很难，从实验二开始就相当地难。实验二是实现Raft算法，这就要求对Raft算法有很深入的了解，至少Figure2是要懂透的，这对于初学者来说过于痛苦了。很丢人地说，我只完成了0.5个实验，我连实验一的case都没有全部通过，实验二三四就都是读别人的代码，只能在感叹别人强悍的同时自我反省。
+
+总结
+
+哪怕我认为6.824有一些不足，但是对于初学分布式系统的人来说仍然是最好的课程，没有之一。课程中大量的论文能帮助初学者快速入门，足够系统的知识点保证在学习完课程之后能够对分布式系统的体系有大致的把握。我个人推荐把网上对论文的分析解读和实际的论文以及视频中的内容结合起来，这样能够更好地理解论文中一些的设计意图和巧妙之处。虽然实验很难，但是如果能够独立完成全部实验的话，那么我想对理解Raft算法和分片，分布式数据库的理解都会更进一步。在完成6.824的课程之后，可以去读一读《DDIA》，这本书通俗易懂，知识丰富，如果对哪个知识点感兴趣的话完全可以去读书中的参考文献。
+" />
+    <meta property="og:url" content="http://localhost:4000/%E5%9B%9E%E9%A1%BEMIT6.824" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/MIT6.824.png" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-08-29T19:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-08-29T19:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="回顾MIT 6.824" />
+    <meta name="twitter:description" content="上图为MIT 6.824教授Robert Morris。
+
+大概是在六月底，经过了一段时间的划水，决定开始学一点研究生该学的东西。之前 一直学的后端开发入门的技术，比如怎么使用Spring，MyBatis之类的框架，在学这些技术的过程中虽然听说了一些分布式系统的组件和原理，但是在那个时候觉得这些都是进阶的知识，大可以工作以后再认真学，就匆匆掠过。研究生嘛，总要学得深入一点，正好在知乎上听闻这门课的风评很好，今年又录了高清的授课视频，就决心跟着这门课学下去。
+
+6.824差不多是一节课读一篇论文，所以要想更好理解上课的内容，还是在课前就读完对应的论文比较好。于是我安排周一周三读论文，周二周四看视频，周五做实验，周日写论文读后感。这里说是读后感，也不过就是中文的摘要罢了。按照这样的进度，经过了大约一个的时间，我在八月第一个星期完成了全部的学习，这期间又被知乎安利去看了《Design Data-Intensive Application》。通过这些学习，我大概算是对分布式系统有了一个大致的了解。
+
+分布式系统结构
+
+分布式系统中有三个子系统，分别是分布式计算系统，分布式存储系统和分布式管理系统。在6.824中，主要讨论分布式存储系统，但通过两篇论文聊了聊分布式计算系统，但是没有涉及分布式管理系统。虽然这里分得很清楚，但是实际上来说，分布式存储系统提供数据给分布式计算系统，分布式管理系统负责监测相关信息，保证正常运行。
+
+分布式系统我们得从Google的三驾马车讲起。谷歌将分布式系统分成三级，GFS负责分布式文件系统，在GFS之上是Bigtable，负责分布式数据库，再上面是分布式计算系统MapReduce。这种分层几乎沿用至今，最多只在分布式数据库之前再加一层缓存。
+
+从更高的维度来看，当我们解决一致性问题以后，我们甚至可以把分布式系统看做是单机的。磁盘存文件对应文件系统，分布式数据库对应单机数据库，而计算则对应我们的代码逻辑。或者说，这反映了分布式系统设计的目标，让客户端感受不到“分布式”的存在，用起来跟单机完全一样。
+
+那么，我们以自底向上的顺序聊一聊整个架构中可能用到的技术和解决方案。
+
+分布式文件系统
+
+分布式文件系统设计之初的目标是存储更多的文件，也就是可拓展性（Scalability），但是在使用的过程中发现容错（Fault-Tolerance或者Resilience）也是一个很重要的目标，那么整个的系统的设计就必须围绕这两个点。
+
+首先考虑怎么实现可拓展性，GFD采用的办法是使用一个服务器存储所有文件的位置，读写文件都要访问这个节点拿到想要访问或添加的文件。这个想法类似于Linux的文件系统，元文件块存储FCB的位置，要读取FCB就要访问元文件块。这个方法简单而且有效，但是很遗憾，我不能拿其他的方案作比较，因为我暂时还没有读过其他的分布式论文，之后会去看看Ceph和PolarFS是怎么实现的。
+
+实现容错的通用方案是使用备份（Replica），当前节点宕机以后就使用备份接替工作。根据6.824和《DDIA》的内容，目前主要的备份方案分为主从复制和链式复制，其中主从复制又根据主节点的个数分为单主节点复制，多主节点复制和无主节点复制。单主节点的方案使用比较多，Spanner和许多系统都使用这种方案。根据《DDIA》的说法，MySQL的Tungsten Replicator，用于PostgreSQL的BDR以及用于Oracle的GoldenGate都使用了多主复制，但是我对这些还没有了解。无主复制在相当长的时间里都不是很流行，但是当Amazon开发了无主复制的Dynamo以后，就有相当多的公司和组织尝试用无主复制的方案开发工具。相较之下，链式复制就要低调得多，但是Amazon Aurora中使用了这一方案。
+
+虽然我们已经使用备份解决了容错的问题，但是另一个问题随之而生，如何保证多个备份之间的数据一致性？在主从复制中，经常使用Paxos，Raft和Zab来解决这些问题，而在链式复制中，由于数据会流经每一个节点，所以必然能够保证数据的一致性，只不过需要花费更久的延迟。
+
+另外一方面，为了追求高吞吐量，分布式文件系统会使用分片技术将数据分发到多个节点上，这样对数据的请求压力也能够被多个节点一起承担。在这里，为了实现数据均匀分布，会使用哈希算法决定数据位置。同时还会使用一致性哈希算法减少节点崩溃时需要的数据传输量。
+
+分布式数据库
+
+说完了分布式文件系统，我们继续聊分布式数据库。分布式数据库的目标包括数据一致性和事务管理两大目标。当然，肯定不仅限于这两点，上面提到的容错和可拓展性也是重要的目标，但是解决方案类似，也就不再讨论。
+
+在分布式数据库中，数据的一致性从脏读，幻读等隔离级别变成了如下的级别。遗憾的是，虽然6.824中用两三篇论文讨论过了这些问题，我对这部分的理解仍然相当有限，所以很难作进一步的解释。
+
+
+  Linearizable（线性）&gt; Sequential（顺序）&gt; Causal（因果）&gt; RyW(read your write)。
+
+
+不过可以确定的是，分布式数据库通过对事务的管理尽可能实现强的数据一致性。最广为人知的事务管理算法是2PC，但是2PC在两段提交的过程中可能会由于某一方节点宕机而失败，并且其效率很低，所以被渐渐抛弃。之后有人提出了TCC的方式，但是我也不是很了解。在这之后，分布式系统中引入了消息队列，由于队列的性质能够保证FIFS，所以在一定程度上解决了事务的先后问题，但是消息队列仍然有消息丢失等问题。特别要说的是，Spanner使用TrueTime实现了全球一致的时间并且使用这个时间一定程度上进行事务管理，是我看到的最好的方案。目前分布式事务仍然有很多问题需要解决，不失为一个不错的研究方向。
+
+数据库的另一个重要性能指标是数据读写的速度。当然，我们不能通过软件提高硬件的性能，但是可以通过合理的数据模型减少检索数据所需要的时间。Bigtable就使用了SSTable将数据有序存储提高性能，Spanner和F1数据库则使用父子表的设计支持关系型数据存储并加快检索。
+
+分布式计算
+
+分布式计算在课程中占比很少，主要讨论了两个方案，MapReduce和Spark。
+
+前者的特点是模型简单，但是需要已经准备好的数据，有点类似于批处理，这就注定了MapReduce不能用于快速响应的情景。另外，由于基础模型过于简单，在希望实现复杂逻辑的时候，编程就比较困难。这些问题导致MapReduce没有在今天大范围使用。
+
+Spark使用了流式计算的方案，每当有数据输入就能生成对应的结果。另外，Spark也支持比较复杂的操作，像JOIN和GROUP，相当程度上弥补了MapReduce的缺点。这使得在其推出后大受欢迎，在今天也有很多人使用。
+
+中间件
+
+目前的分布式系统中，除了上述的层级还有一些组件用于在各层之间协调，6.824介绍的Memcache就是其中的一种。
+
+Memcache用于用户层和数据库之间，由于查询数据需要经过磁盘，读写效率很低。所以Memcache将一些数据放在内存中，只有当Memcache中没有用户需要的数据时才去查询数据库，这就大大提高了查询效率。
+
+在分布式系统中还经常使用Zookeeper作为协调组件。Zookeeper提供一个运行在内存中的小型文件系统，系统可以使用这个文件系统实现锁服务，成员管理等相当多的功能。
+
+上面我们还提到了消息队列，现在的系统中也广泛使用类似于Kafka，RabbitMQ等组件来实现消息解耦，同时减少服务器压力。不过消息队列似乎仅在可以异步处理的情况下比较有效。
+
+课程内容
+
+可能是囿于课程时间的限制，6.824没有完整地讨论很多东西，比如Bigtable和Paxos就没有讨论。另外，我觉得课程的安排也有一些问题，比如它把MapReduce作为第一课，虽然MapReduce够简单，也很合适实验设置。但是我想一课可以安排Paxos或者Raft作为基础，在这之后可以完整详细地讨论谷歌的三驾马车，这之后再讨论分布式事务，最后讨论一下分布式计算。这门课程花了三节课的时间讨论区块链，这实在是不值得，我想最多只能花两节课时间再这上面。个人认为区块链的唯一用处是用Work Proof解决了拜占庭问题，但是Work Proof的花费太大以至于几乎不可能在实际中使用。
+
+另外要说的是这门课的实验。很难，真的很难，从实验二开始就相当地难。实验二是实现Raft算法，这就要求对Raft算法有很深入的了解，至少Figure2是要懂透的，这对于初学者来说过于痛苦了。很丢人地说，我只完成了0.5个实验，我连实验一的case都没有全部通过，实验二三四就都是读别人的代码，只能在感叹别人强悍的同时自我反省。
+
+总结
+
+哪怕我认为6.824有一些不足，但是对于初学分布式系统的人来说仍然是最好的课程，没有之一。课程中大量的论文能帮助初学者快速入门，足够系统的知识点保证在学习完课程之后能够对分布式系统的体系有大致的把握。我个人推荐把网上对论文的分析解读和实际的论文以及视频中的内容结合起来，这样能够更好地理解论文中一些的设计意图和巧妙之处。虽然实验很难，但是如果能够独立完成全部实验的话，那么我想对理解Raft算法和分片，分布式数据库的理解都会更进一步。在完成6.824的课程之后，可以去读一读《DDIA》，这本书通俗易懂，知识丰富，如果对哪个知识点感兴趣的话完全可以去读书中的参考文献。
+" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/MIT6.824.png" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E5%9B%9E%E9%A1%BEMIT6.824",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/MIT6.824.png",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E5%9B%9E%E9%A1%BEMIT6.824"
+    },
+    "description": "上图为MIT 6.824教授Robert Morris。
+
+大概是在六月底，经过了一段时间的划水，决定开始学一点研究生该学的东西。之前 一直学的后端开发入门的技术，比如怎么使用Spring，MyBatis之类的框架，在学这些技术的过程中虽然听说了一些分布式系统的组件和原理，但是在那个时候觉得这些都是进阶的知识，大可以工作以后再认真学，就匆匆掠过。研究生嘛，总要学得深入一点，正好在知乎上听闻这门课的风评很好，今年又录了高清的授课视频，就决心跟着这门课学下去。
+
+6.824差不多是一节课读一篇论文，所以要想更好理解上课的内容，还是在课前就读完对应的论文比较好。于是我安排周一周三读论文，周二周四看视频，周五做实验，周日写论文读后感。这里说是读后感，也不过就是中文的摘要罢了。按照这样的进度，经过了大约一个的时间，我在八月第一个星期完成了全部的学习，这期间又被知乎安利去看了《Design Data-Intensive Application》。通过这些学习，我大概算是对分布式系统有了一个大致的了解。
+
+分布式系统结构
+
+分布式系统中有三个子系统，分别是分布式计算系统，分布式存储系统和分布式管理系统。在6.824中，主要讨论分布式存储系统，但通过两篇论文聊了聊分布式计算系统，但是没有涉及分布式管理系统。虽然这里分得很清楚，但是实际上来说，分布式存储系统提供数据给分布式计算系统，分布式管理系统负责监测相关信息，保证正常运行。
+
+分布式系统我们得从Google的三驾马车讲起。谷歌将分布式系统分成三级，GFS负责分布式文件系统，在GFS之上是Bigtable，负责分布式数据库，再上面是分布式计算系统MapReduce。这种分层几乎沿用至今，最多只在分布式数据库之前再加一层缓存。
+
+从更高的维度来看，当我们解决一致性问题以后，我们甚至可以把分布式系统看做是单机的。磁盘存文件对应文件系统，分布式数据库对应单机数据库，而计算则对应我们的代码逻辑。或者说，这反映了分布式系统设计的目标，让客户端感受不到“分布式”的存在，用起来跟单机完全一样。
+
+那么，我们以自底向上的顺序聊一聊整个架构中可能用到的技术和解决方案。
+
+分布式文件系统
+
+分布式文件系统设计之初的目标是存储更多的文件，也就是可拓展性（Scalability），但是在使用的过程中发现容错（Fault-Tolerance或者Resilience）也是一个很重要的目标，那么整个的系统的设计就必须围绕这两个点。
+
+首先考虑怎么实现可拓展性，GFD采用的办法是使用一个服务器存储所有文件的位置，读写文件都要访问这个节点拿到想要访问或添加的文件。这个想法类似于Linux的文件系统，元文件块存储FCB的位置，要读取FCB就要访问元文件块。这个方法简单而且有效，但是很遗憾，我不能拿其他的方案作比较，因为我暂时还没有读过其他的分布式论文，之后会去看看Ceph和PolarFS是怎么实现的。
+
+实现容错的通用方案是使用备份（Replica），当前节点宕机以后就使用备份接替工作。根据6.824和《DDIA》的内容，目前主要的备份方案分为主从复制和链式复制，其中主从复制又根据主节点的个数分为单主节点复制，多主节点复制和无主节点复制。单主节点的方案使用比较多，Spanner和许多系统都使用这种方案。根据《DDIA》的说法，MySQL的Tungsten Replicator，用于PostgreSQL的BDR以及用于Oracle的GoldenGate都使用了多主复制，但是我对这些还没有了解。无主复制在相当长的时间里都不是很流行，但是当Amazon开发了无主复制的Dynamo以后，就有相当多的公司和组织尝试用无主复制的方案开发工具。相较之下，链式复制就要低调得多，但是Amazon Aurora中使用了这一方案。
+
+虽然我们已经使用备份解决了容错的问题，但是另一个问题随之而生，如何保证多个备份之间的数据一致性？在主从复制中，经常使用Paxos，Raft和Zab来解决这些问题，而在链式复制中，由于数据会流经每一个节点，所以必然能够保证数据的一致性，只不过需要花费更久的延迟。
+
+另外一方面，为了追求高吞吐量，分布式文件系统会使用分片技术将数据分发到多个节点上，这样对数据的请求压力也能够被多个节点一起承担。在这里，为了实现数据均匀分布，会使用哈希算法决定数据位置。同时还会使用一致性哈希算法减少节点崩溃时需要的数据传输量。
+
+分布式数据库
+
+说完了分布式文件系统，我们继续聊分布式数据库。分布式数据库的目标包括数据一致性和事务管理两大目标。当然，肯定不仅限于这两点，上面提到的容错和可拓展性也是重要的目标，但是解决方案类似，也就不再讨论。
+
+在分布式数据库中，数据的一致性从脏读，幻读等隔离级别变成了如下的级别。遗憾的是，虽然6.824中用两三篇论文讨论过了这些问题，我对这部分的理解仍然相当有限，所以很难作进一步的解释。
+
+
+  Linearizable（线性）&gt; Sequential（顺序）&gt; Causal（因果）&gt; RyW(read your write)。
+
+
+不过可以确定的是，分布式数据库通过对事务的管理尽可能实现强的数据一致性。最广为人知的事务管理算法是2PC，但是2PC在两段提交的过程中可能会由于某一方节点宕机而失败，并且其效率很低，所以被渐渐抛弃。之后有人提出了TCC的方式，但是我也不是很了解。在这之后，分布式系统中引入了消息队列，由于队列的性质能够保证FIFS，所以在一定程度上解决了事务的先后问题，但是消息队列仍然有消息丢失等问题。特别要说的是，Spanner使用TrueTime实现了全球一致的时间并且使用这个时间一定程度上进行事务管理，是我看到的最好的方案。目前分布式事务仍然有很多问题需要解决，不失为一个不错的研究方向。
+
+数据库的另一个重要性能指标是数据读写的速度。当然，我们不能通过软件提高硬件的性能，但是可以通过合理的数据模型减少检索数据所需要的时间。Bigtable就使用了SSTable将数据有序存储提高性能，Spanner和F1数据库则使用父子表的设计支持关系型数据存储并加快检索。
+
+分布式计算
+
+分布式计算在课程中占比很少，主要讨论了两个方案，MapReduce和Spark。
+
+前者的特点是模型简单，但是需要已经准备好的数据，有点类似于批处理，这就注定了MapReduce不能用于快速响应的情景。另外，由于基础模型过于简单，在希望实现复杂逻辑的时候，编程就比较困难。这些问题导致MapReduce没有在今天大范围使用。
+
+Spark使用了流式计算的方案，每当有数据输入就能生成对应的结果。另外，Spark也支持比较复杂的操作，像JOIN和GROUP，相当程度上弥补了MapReduce的缺点。这使得在其推出后大受欢迎，在今天也有很多人使用。
+
+中间件
+
+目前的分布式系统中，除了上述的层级还有一些组件用于在各层之间协调，6.824介绍的Memcache就是其中的一种。
+
+Memcache用于用户层和数据库之间，由于查询数据需要经过磁盘，读写效率很低。所以Memcache将一些数据放在内存中，只有当Memcache中没有用户需要的数据时才去查询数据库，这就大大提高了查询效率。
+
+在分布式系统中还经常使用Zookeeper作为协调组件。Zookeeper提供一个运行在内存中的小型文件系统，系统可以使用这个文件系统实现锁服务，成员管理等相当多的功能。
+
+上面我们还提到了消息队列，现在的系统中也广泛使用类似于Kafka，RabbitMQ等组件来实现消息解耦，同时减少服务器压力。不过消息队列似乎仅在可以异步处理的情况下比较有效。
+
+课程内容
+
+可能是囿于课程时间的限制，6.824没有完整地讨论很多东西，比如Bigtable和Paxos就没有讨论。另外，我觉得课程的安排也有一些问题，比如它把MapReduce作为第一课，虽然MapReduce够简单，也很合适实验设置。但是我想一课可以安排Paxos或者Raft作为基础，在这之后可以完整详细地讨论谷歌的三驾马车，这之后再讨论分布式事务，最后讨论一下分布式计算。这门课程花了三节课的时间讨论区块链，这实在是不值得，我想最多只能花两节课时间再这上面。个人认为区块链的唯一用处是用Work Proof解决了拜占庭问题，但是Work Proof的花费太大以至于几乎不可能在实际中使用。
+
+另外要说的是这门课的实验。很难，真的很难，从实验二开始就相当地难。实验二是实现Raft算法，这就要求对Raft算法有很深入的了解，至少Figure2是要懂透的，这对于初学者来说过于痛苦了。很丢人地说，我只完成了0.5个实验，我连实验一的case都没有全部通过，实验二三四就都是读别人的代码，只能在感叹别人强悍的同时自我反省。
+
+总结
+
+哪怕我认为6.824有一些不足，但是对于初学分布式系统的人来说仍然是最好的课程，没有之一。课程中大量的论文能帮助初学者快速入门，足够系统的知识点保证在学习完课程之后能够对分布式系统的体系有大致的把握。我个人推荐把网上对论文的分析解读和实际的论文以及视频中的内容结合起来，这样能够更好地理解论文中一些的设计意图和巧妙之处。虽然实验很难，但是如果能够独立完成全部实验的话，那么我想对理解Raft算法和分片，分布式数据库的理解都会更进一步。在完成6.824的课程之后，可以去读一读《DDIA》，这本书通俗易懂，知识丰富，如果对哪个知识点感兴趣的话完全可以去读书中的参考文献。
+"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="回顾MIT 6.824" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="29 August 2020">29 August 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">回顾MIT 6.824</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/MIT6.824.png)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>上图为MIT 6.824教授Robert Morris。</p>
+
+<p>大概是在六月底，经过了一段时间的划水，决定开始学一点研究生该学的东西。之前 一直学的后端开发入门的技术，比如怎么使用Spring，MyBatis之类的框架，在学这些技术的过程中虽然听说了一些分布式系统的组件和原理，但是在那个时候觉得这些都是进阶的知识，大可以工作以后再认真学，就匆匆掠过。研究生嘛，总要学得深入一点，正好在知乎上听闻这门课的风评很好，今年又录了高清的授课视频，就决心跟着这门课学下去。</p>
+
+<p>6.824差不多是一节课读一篇论文，所以要想更好理解上课的内容，还是在课前就读完对应的论文比较好。于是我安排周一周三读论文，周二周四看视频，周五做实验，周日写论文读后感。这里说是读后感，也不过就是中文的摘要罢了。按照这样的进度，经过了大约一个的时间，我在八月第一个星期完成了全部的学习，这期间又被知乎安利去看了《Design Data-Intensive Application》。通过这些学习，我大概算是对分布式系统有了一个大致的了解。</p>
+
+<h2 id="分布式系统结构">分布式系统结构</h2>
+
+<p>分布式系统中有三个子系统，分别是分布式计算系统，分布式存储系统和分布式管理系统。在6.824中，主要讨论分布式存储系统，但通过两篇论文聊了聊分布式计算系统，但是没有涉及分布式管理系统。虽然这里分得很清楚，但是实际上来说，分布式存储系统提供数据给分布式计算系统，分布式管理系统负责监测相关信息，保证正常运行。</p>
+
+<p>分布式系统我们得从Google的三驾马车讲起。谷歌将分布式系统分成三级，GFS负责分布式文件系统，在GFS之上是Bigtable，负责分布式数据库，再上面是分布式计算系统MapReduce。这种分层几乎沿用至今，最多只在分布式数据库之前再加一层缓存。</p>
+
+<p>从更高的维度来看，当我们解决一致性问题以后，我们甚至可以把分布式系统看做是单机的。磁盘存文件对应文件系统，分布式数据库对应单机数据库，而计算则对应我们的代码逻辑。或者说，这反映了分布式系统设计的目标，让客户端感受不到“分布式”的存在，用起来跟单机完全一样。</p>
+
+<p>那么，我们以自底向上的顺序聊一聊整个架构中可能用到的技术和解决方案。</p>
+
+<h3 id="分布式文件系统">分布式文件系统</h3>
+
+<p>分布式文件系统设计之初的目标是存储更多的文件，也就是可拓展性（Scalability），但是在使用的过程中发现容错（Fault-Tolerance或者Resilience）也是一个很重要的目标，那么整个的系统的设计就必须围绕这两个点。</p>
+
+<p>首先考虑怎么实现可拓展性，GFD采用的办法是使用一个服务器存储所有文件的位置，读写文件都要访问这个节点拿到想要访问或添加的文件。这个想法类似于Linux的文件系统，元文件块存储FCB的位置，要读取FCB就要访问元文件块。这个方法简单而且有效，但是很遗憾，我不能拿其他的方案作比较，因为我暂时还没有读过其他的分布式论文，之后会去看看Ceph和PolarFS是怎么实现的。</p>
+
+<p>实现容错的通用方案是使用备份（Replica），当前节点宕机以后就使用备份接替工作。根据6.824和《DDIA》的内容，目前主要的备份方案分为主从复制和链式复制，其中主从复制又根据主节点的个数分为单主节点复制，多主节点复制和无主节点复制。单主节点的方案使用比较多，Spanner和许多系统都使用这种方案。根据《DDIA》的说法，MySQL的Tungsten Replicator，用于PostgreSQL的BDR以及用于Oracle的GoldenGate都使用了多主复制，但是我对这些还没有了解。无主复制在相当长的时间里都不是很流行，但是当Amazon开发了无主复制的Dynamo以后，就有相当多的公司和组织尝试用无主复制的方案开发工具。相较之下，链式复制就要低调得多，但是Amazon Aurora中使用了这一方案。</p>
+
+<p>虽然我们已经使用备份解决了容错的问题，但是另一个问题随之而生，如何保证多个备份之间的数据一致性？在主从复制中，经常使用Paxos，Raft和Zab来解决这些问题，而在链式复制中，由于数据会流经每一个节点，所以必然能够保证数据的一致性，只不过需要花费更久的延迟。</p>
+
+<p>另外一方面，为了追求高吞吐量，分布式文件系统会使用分片技术将数据分发到多个节点上，这样对数据的请求压力也能够被多个节点一起承担。在这里，为了实现数据均匀分布，会使用哈希算法决定数据位置。同时还会使用一致性哈希算法减少节点崩溃时需要的数据传输量。</p>
+
+<h3 id="分布式数据库">分布式数据库</h3>
+
+<p>说完了分布式文件系统，我们继续聊分布式数据库。分布式数据库的目标包括数据一致性和事务管理两大目标。当然，肯定不仅限于这两点，上面提到的容错和可拓展性也是重要的目标，但是解决方案类似，也就不再讨论。</p>
+
+<p>在分布式数据库中，数据的一致性从脏读，幻读等隔离级别变成了如下的级别。遗憾的是，虽然6.824中用两三篇论文讨论过了这些问题，我对这部分的理解仍然相当有限，所以很难作进一步的解释。</p>
+
+<blockquote>
+  <p>Linearizable（线性）&gt; Sequential（顺序）&gt; Causal（因果）&gt; RyW(read your write)。</p>
+</blockquote>
+
+<p>不过可以确定的是，分布式数据库通过对事务的管理尽可能实现强的数据一致性。最广为人知的事务管理算法是2PC，但是2PC在两段提交的过程中可能会由于某一方节点宕机而失败，并且其效率很低，所以被渐渐抛弃。之后有人提出了TCC的方式，但是我也不是很了解。在这之后，分布式系统中引入了消息队列，由于队列的性质能够保证FIFS，所以在一定程度上解决了事务的先后问题，但是消息队列仍然有消息丢失等问题。特别要说的是，Spanner使用TrueTime实现了全球一致的时间并且使用这个时间一定程度上进行事务管理，是我看到的最好的方案。目前分布式事务仍然有很多问题需要解决，不失为一个不错的研究方向。</p>
+
+<p>数据库的另一个重要性能指标是数据读写的速度。当然，我们不能通过软件提高硬件的性能，但是可以通过合理的数据模型减少检索数据所需要的时间。Bigtable就使用了SSTable将数据有序存储提高性能，Spanner和F1数据库则使用父子表的设计支持关系型数据存储并加快检索。</p>
+
+<h3 id="分布式计算">分布式计算</h3>
+
+<p>分布式计算在课程中占比很少，主要讨论了两个方案，MapReduce和Spark。</p>
+
+<p>前者的特点是模型简单，但是需要已经准备好的数据，有点类似于批处理，这就注定了MapReduce不能用于快速响应的情景。另外，由于基础模型过于简单，在希望实现复杂逻辑的时候，编程就比较困难。这些问题导致MapReduce没有在今天大范围使用。</p>
+
+<p>Spark使用了流式计算的方案，每当有数据输入就能生成对应的结果。另外，Spark也支持比较复杂的操作，像JOIN和GROUP，相当程度上弥补了MapReduce的缺点。这使得在其推出后大受欢迎，在今天也有很多人使用。</p>
+
+<h3 id="中间件">中间件</h3>
+
+<p>目前的分布式系统中，除了上述的层级还有一些组件用于在各层之间协调，6.824介绍的Memcache就是其中的一种。</p>
+
+<p>Memcache用于用户层和数据库之间，由于查询数据需要经过磁盘，读写效率很低。所以Memcache将一些数据放在内存中，只有当Memcache中没有用户需要的数据时才去查询数据库，这就大大提高了查询效率。</p>
+
+<p>在分布式系统中还经常使用Zookeeper作为协调组件。Zookeeper提供一个运行在内存中的小型文件系统，系统可以使用这个文件系统实现锁服务，成员管理等相当多的功能。</p>
+
+<p>上面我们还提到了消息队列，现在的系统中也广泛使用类似于Kafka，RabbitMQ等组件来实现消息解耦，同时减少服务器压力。不过消息队列似乎仅在可以异步处理的情况下比较有效。</p>
+
+<h2 id="课程内容">课程内容</h2>
+
+<p>可能是囿于课程时间的限制，6.824没有完整地讨论很多东西，比如Bigtable和Paxos就没有讨论。另外，我觉得课程的安排也有一些问题，比如它把MapReduce作为第一课，虽然MapReduce够简单，也很合适实验设置。但是我想一课可以安排Paxos或者Raft作为基础，在这之后可以完整详细地讨论谷歌的三驾马车，这之后再讨论分布式事务，最后讨论一下分布式计算。这门课程花了三节课的时间讨论区块链，这实在是不值得，我想最多只能花两节课时间再这上面。个人认为区块链的唯一用处是用Work Proof解决了拜占庭问题，但是Work Proof的花费太大以至于几乎不可能在实际中使用。</p>
+
+<p>另外要说的是这门课的实验。很难，真的很难，从实验二开始就相当地难。实验二是实现Raft算法，这就要求对Raft算法有很深入的了解，至少Figure2是要懂透的，这对于初学者来说过于痛苦了。很丢人地说，我只完成了0.5个实验，我连实验一的case都没有全部通过，实验二三四就都是读别人的代码，只能在感叹别人强悍的同时自我反省。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>哪怕我认为6.824有一些不足，但是对于初学分布式系统的人来说仍然是最好的课程，没有之一。课程中大量的论文能帮助初学者快速入门，足够系统的知识点保证在学习完课程之后能够对分布式系统的体系有大致的把握。我个人推荐把网上对论文的分析解读和实际的论文以及视频中的内容结合起来，这样能够更好地理解论文中一些的设计意图和巧妙之处。虽然实验很难，但是如果能够独立完成全部实验的话，那么我想对理解Raft算法和分片，分布式数据库的理解都会更进一步。在完成6.824的课程之后，可以去读一读《DDIA》，这本书通俗易懂，知识丰富，如果对哪个知识点感兴趣的话完全可以去读书中的参考文献。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Spanner">浅谈Spanner</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">
+                <div class="post-card-image" style="background-image: url(/assets/images/consensus.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">共识性算法的发展</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Memcache">
+                <div class="post-card-image" style="background-image: url(/assets/images/memcache.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Memcache">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Memcache</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">回顾MIT 6.824</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E5%9B%9E%E9%A1%BEMIT+6.824&amp;url=https://jekyller.github.io/jasper2/%E5%9B%9E%E9%A1%BEMIT6.824"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E5%9B%9E%E9%A1%BEMIT6.824"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

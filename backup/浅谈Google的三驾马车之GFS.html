@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>浅谈Google的三驾马车之GFS</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅谈Google的三驾马车之GFS" />
+    <meta property="og:description" content="上图为古天乐——真·高富帅（GFS） 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master" />
+    <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/gfs.jpeg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-08-08T18:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-08-08T18:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅谈Google的三驾马车之GFS" />
+    <meta name="twitter:description" content="上图为古天乐——真·高富帅（GFS） 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/gfs.jpeg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/gfs.jpeg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS"
+    },
+    "description": "上图为古天乐——真·高富帅（GFS） 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 Google File System GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。 由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。 系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。 系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。 高性能稳定的网络带宽比延迟更重要。 以及最重要的，能在分布式的系统上运行。 在下面，我们根据具体的措施讨论如何实现以上目标。 总体架构 首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。 上图演示了应用如何调用GSF进行读操作的具体流程 应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。 GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="浅谈Google的三驾马车之GFS" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime=" 8 August 2020"> 8 August 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">浅谈Google的三驾马车之GFS</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/gfs.jpeg)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>上图为古天乐——真·高富帅（GFS）</p>
+
+<p>谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍Google File System的相关内容。</p>
+
+<h2 id="背景介绍">背景介绍</h2>
+
+<p>在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。</p>
+
+<p><img src="/assets/images/Google troika.png" alt="Troika" /></p>
+
+<h2 id="google-file-system">Google File System</h2>
+
+<p>GFS是三驾马车中最底层的组件，当然也是最复杂的，因为他直接和分布式的系统接触。在具体探讨实现细节之前，Google给出了一些设计前提和设计目标。</p>
+
+<blockquote>
+  <ol>
+    <li>由于使用的机器是廉价的商业化机器，那么机器崩溃被认为是一种常态。</li>
+    <li>系统存储以大文件为主，但也支持小文件。文件大小通常在100MB左右并且需要高效的操作几个GB的文件。</li>
+    <li>系统需要支持大规模的连续读取和小规模的随机读取，以及大规模的追加写。</li>
+    <li>高性能稳定的网络带宽比延迟更重要。</li>
+    <li>以及最重要的，能在分布式的系统上运行。</li>
+  </ol>
+</blockquote>
+
+<p>在下面，我们根据具体的措施讨论如何实现以上目标。</p>
+
+<h3 id="总体架构">总体架构</h3>
+
+<p>首先我们来看看GFS的总体架构。在这个架构中，GFS采用了单Master（Single Master）的设计来简化系统的复杂度。Master负责两点，一是存储和维护Chunk Server和数据块的相关信息，二是处理客户端的请求。也就是说，Master并不存储任何具体的数据，这些数据被存在被称为Chunk Server的数据节点上。其中Chunk就是指数据块，在GFS中被固定为64MB大小，我想着可能跟第二个目标相关。每当数据需要被写入时，就更新GFS中的信息，并把数据封装成Chunk写入到数据库中，具体流程在下面会仔细介绍。</p>
+
+<p><img src="/assets/images/GFS Architecture.png" alt="GFS Architecture" /></p>
+
+<p>上图演示了应用如何调用GSF进行读操作的具体流程</p>
+
+<blockquote>
+  <ol>
+    <li>应用调用GFS Client的函数，要求其读取具体的文件/foo/bar，假设大小为50MB。</li>
+    <li>GFS Client根据Chunk的固定大小计算出/foo/bar的Chunk的Index，即64/50向上取整，Chunk Index=1。以及其在Chunk内的偏移量Byte Range[0，50]，并将File Name和Chunk Index作为参数发送给GFS Master</li>
+    <li>Master返回了对应的Chunk Handle（也就是Chunk的ID，上图中的2ef0）和Chunk Locations（Chunk Server和其副本的IP）</li>
+    <li>GFS Client根据返回的Chunk Locations找到最近的Chunk Server，然后根据Chunk Handle找到对应的Chunk，最后按照这个文件在Chunk中偏移量Byte Range读取文件。</li>
+    <li>Chunk Server按照其要求返回文件数据。</li>
+  </ol>
+</blockquote>
+
+<p>整个的流程相当清晰，客户端负责将文件在File Namespace的位置交给Master，Master根据其位置返回对应的Chunk和Chunk Server，然后客户端再根据这些信息去拿数据。但是，这里有很巧妙的设计，就是GFS将所有数据传输的压力都放到Chunk Server上，而不是Master。假设由Master根据Chunk Handle去找数据并返回给客户端，那么这里就有会造成系统带宽压力增大。如果按照假设设计，Chunk Server将数据传回给Master后，Master还要将数据传回给客户端，也就是64MB的流量陡然翻倍成128MB。而实际的GFS不仅降低了Master带宽的压力，还把读取数据的压力均摊到每个Chunk Server上，降低了整个系统的压力。这些设计明显有助于实现目标三。</p>
+
+<p>通过对读取过程的分析，可以发现，GFS已经完全实现目标二中的大规模连续读和小规模随机读的要求。</p>
+
+<h3 id="single-master">Single Master</h3>
+
+<p>Master中保存三种信息（MATEDATA）</p>
+
+<blockquote>
+  <ol>
+    <li>文件和chunk的namespace，即文件树形式的命名方式。</li>
+    <li>文件到chunk的映射，即每个文件需要哪几个Chunk来记录。</li>
+    <li>每一个chunk的具体位置。</li>
+  </ol>
+</blockquote>
+
+<p>这些信息都平时都存在内存中，以此提高响应速度。这似乎只能存储很少的信息，但是，Master只需要64byte的空间就能记录64MB的Chunk的相关信息，也就是说，128MB的内存能存储1PB的数据的相关信息。不过，为了保证Master能在崩溃后恢复，在执行改变前两种信息的操作前需要使用WAL的形式定期地保存到磁盘上。这样，在Master恢复的时候，就能通过磁盘上的WAL来重建前两种信息。而Chunk的位置则可以通过Heartbeats的形式查询并更新，这样不仅加速了Master的恢复，也能使GFS的配置更加灵活。</p>
+
+<h3 id="写数据write">写数据（Write）</h3>
+
+<p>由于每个Chunk Server都有备份的副本，所以写操作要比读操作稍微复杂一点。具体的流程如下图所示</p>
+
+<p><img src="/assets/images/GFS Write.png" alt="GFS Write" /></p>
+
+<blockquote>
+  <ol>
+    <li>客户端向 Master 询问目前哪个Chunk Server持有该Chunk的Lease</li>
+    <li>Master 向客户端返回Primary Replica和其他Replica的位置</li>
+    <li>客户端将数据推送到所有的Replica上。Chunk Server会把这些数据保存在缓冲区中，等待所有 Replica 都接收到数据。</li>
+    <li>客户端发送写请求给 Primary，Primary 为来自各个客户端的修改操作选定执行序列号，并按顺序地应用于其本地存储的数据。</li>
+    <li>Primary 将写请求转发给其他 Secondary Replica，Replica 们按照相同的顺序应用这些修改</li>
+    <li>Secondary Replica 响应 Primary，示意自己已经完成操作。</li>
+    <li>Primary 响应客户端，并返回该过程中发生的错误</li>
+  </ol>
+</blockquote>
+
+<p>这里要说明的是，每个Chunk被复制到多个Chunk Server中，以此避免单个节点崩溃可能造成的数据损失。而这些Chunk Server中负责相应写操作的Chunk Server被称为Primary Replica，其余的被称为Secondary Replica，接受来自Primary Replica的请求。而为了保证写入数据的一致性，只能有一个Primary Replica，这里的唯一性就由Lease来实现。当需要写入数据时，Master会将特定的Lease分配给某个Replica，拿到Lease的这个Replica就称为了Primary Replica。</p>
+
+<p>我们再仔细分析整个写的的流程。我们可以注意到为了保证数据的一致性，一次写入只能有一个Primary Replica，同样地，在正式写入数据之前要求所有Secondary Replica缓存数据也是为了一致性。这里的思想类似于WAL，将要执行的操作先保存下来，这样万一崩溃了也能从磁盘读入数据，继续执行未完成的操作。等待所有Secondary Replica完成操作后再相应客户端也是为了保证数据的一致性。</p>
+
+<p>和读操作类似，在写操作中，为了降低Master的压力，所有的数据由客户端发向Chunk Server。</p>
+
+<h3 id="追加append">追加（Append）</h3>
+
+<p>为了提升性能，GFS提供并推荐使用追加操作修改文件。它与写操作不同之处仅仅在于它向文件尾端添加数据而不是覆盖，它的流程也he 写操作大同小异</p>
+
+<blockquote>
+  <ol>
+    <li>客户端将数据推送到每个 Replica，然后将请求发往 Primary</li>
+    <li>Primary 首先判断将数据追加到该块后是否会令块的大小超过上限：如果是，那么 Primary 会为该块写入填充至其大小达到上限，并通知其他 Replica 执行相同的操作，再响应客户端，通知其应在下一个块上重试该操作</li>
+    <li>如果数据能够被放入到当前块中，那么 Primary 会把数据追加到自己的 Replica 中，拿到追加成功返回的偏移值，然后通知其他 Replica 将数据写入到该偏移位置中</li>
+    <li>最后 Primary 再响应客户端</li>
+  </ol>
+</blockquote>
+
+<p>特别值得一提的是，GFS保证追加操作至少被执行一次（at least once），这意味着追加操作可能被执行多次。当追加操作失败时，为了保证偏移量，GFS会在对应的位置填充重复的数据，然后重试追加。也就是说，GFS不保证在每个副本中的数据完全一致，而仅仅保证数据被写入了。</p>
+
+<h3 id="数据一致性">数据一致性</h3>
+
+<p>在GFS中，由于分布式系统的原因，不同节点间处理请求和存储数据速度不一致导致了客户算读取数据时可能出现各种不同的情况。</p>
+
+<p>文件的数据修改则相对复杂。在讲述接下来的内容前，首先我们先明确，在文件的某一部分被修改后，它可能进入以下三种状态的其中之一：</p>
+
+<p>在文件的某一部分被修改后，它可能进入以下三种状态的其中之一：</p>
+
+<blockquote>
+  <ul>
+    <li>客户端读取不同的 Replica 时可能会读取到不同的内容，那这部分文件是不一致的（Inconsistent）。</li>
+    <li>所有客户端无论读取哪个 Replica 都会读取到相同的内容，那这部分文件就是一致的（Consistent）。</li>
+    <li>所有客户端都能看到上一次修改的所有完整内容，且这部分文件是一致的，那么我们说这部分文件是确定的（Defined）。</li>
+  </ul>
+</blockquote>
+
+<p>也就是说，在一致性和强度上，Defined&gt;Consistent&gt;Inconsistent。</p>
+
+<p>在修改后，一个文件的当前状态将取决于此次修改的类型以及修改是否成功。具体来说：</p>
+
+<blockquote>
+  <ul>
+    <li>如果一次写入操作成功且没有与其他并发的写入操作发生重叠，那这部分的文件是确定的（同时也是一致的）。</li>
+    <li>如果有若干个写入操作并发地执行成功，那么这部分文件会是一致的但会是不确定的：在这种情况下，客户端所能看到的数据通常不能直接体现出其中的任何一次修改。也就是说，操作成功执行了，但是有的操作的数据改变被覆盖了，客户端看不到被覆盖的数据改变。</li>
+    <li>失败的写入操作会让文件进入不一致的状态。</li>
+  </ul>
+</blockquote>
+
+<p>论文中给出了总结的表格：</p>
+
+<p><img src="/assets/images/consistency.png" alt="consistency" /></p>
+
+<p>至于为什么追加（Append）是Defined但是有可能是不一致是因为：在追加写操作失败时，为了保证数据的偏移，可能为填充重复的数据，此时导致了不一致。但是失败的操作会被再次执行，此时又保证了数据的一致性。而由于使用的是追加，所以任何数据的改动都可以观察到，所以是Defined。</p>
+
+<h3 id="快照snapshot">快照（Snapshot）</h3>
+
+<p>这里的快照的目的不同于Raft中的压缩，它仅仅驶出为了生成一个新的Replica，可以看做是一个简单的复制操作。</p>
+
+<blockquote>
+  <ol>
+    <li>在 Master 接收到快照请求后，它首先会撤回相关Chunk  Server的 Lease，保证在创建快照的过程中，客户端对不会对相关的Chunk Server进行写操作或者追加操作。</li>
+    <li>当Lease收回后，Master会先将相关的改动写入日志，然后对自己管理的命名空间进行复制操作，复制产生的新记录指向原本的 Chunk。</li>
+    <li>当有客户端尝试对新的Chunk Server进行写入时，Master 会注意到这个 Chunk 的引用计数大于1（可能是一个标记）。此时，Master 会为要读取的Chunk生成一个Handle，然后通知所有持有这些 Chunk 的 Chunk Server 在本地复制并使用出新的 Chunk，然后再返回给客户端</li>
+  </ol>
+</blockquote>
+
+<p>我想GFS提供快照的原因可能是为了在一个副本损坏时，从Primary Replica或者其他副本复制数据，然后用新的节点代替损坏的节点。</p>
+
+<h3 id="垃圾回收">垃圾回收</h3>
+
+<p>当GFS收到删除文件的请求时，它并不直接删除文件，而是给文件打上删除的时间戳并将其命名为掩藏文件（文件开头加”.”）。在周期性扫描过程中，当发现文件的删除时间超过设定期限后，才真正地将文件删除。Google认为其有以下优点</p>
+
+<blockquote>
+  <ul>
+    <li>对于大规模的分布式系统来说，这样的机制更为<strong>可靠</strong>：在 Chunk 创建时，创建操作可能在某些 Chunk Server 上成功了，在其他 Chunk Server 上失败了，这导致某些 Chunk Server 上可能存在 Master 不知道的 Replica。除此以外，删除 Replica 的请求可能会发送失败，Master 会需要记得尝试重发。相比之下，由 Chunk Server 主动地删除 Replica 能够以一种更为统一的方式解决以上的问题</li>
+    <li>这样的删除机制将存储回收过程与 Master 日常的周期扫描过程合并在了一起，这就使得这些操作可以以批的形式进行处理，以减少资源损耗；除外，这样也得以让 Master 选择在相对空闲的时候进行这些操作</li>
+    <li>用户发送删除请求和数据被实际删除之间的延迟也有效避免了用户误操作的问题</li>
+  </ul>
+</blockquote>
+
+<h3 id="高可用">高可用</h3>
+
+<p>论文中主要探讨了三个方面的高可用，分别是Master，Chunk Server和数据完整性。</p>
+
+<p>当Master崩溃时，有两种情况，一是进程崩溃但是服务器没有，这种情况下，重开一个进程即可。另一种情况是整个机器崩溃了，在GFS还有被称为Shadow Master的机器，复制Master节点的信息。当Master机器崩溃后，Shadow Master会接替Master进行服务，但是仅提供读取操作的服务，不能更改信息。</p>
+
+<p>当Chunk Server崩溃时，Master会安排新的Replica代替它，从其他Replica复制原始数据。而当Chunk Server恢复时，由于数据不同步，不应该提供服务，Master就需要区别新旧Chunk Server。GFS使用版本号来标记这个信息，每分配以此Lease，版本号就会增加并同步给其他Replica，而由于Chunk Server崩溃后不能更新，我们就能从版本号上辨别新旧。</p>
+
+<p>由于写操作和追加操作可能不成功，所以数据可能会损坏。GFS使用检验和检查是否损坏，每次客户端读取数据时，Chunk Server都会检查检验和，一旦发现损坏，就会向Master报告。Master则会将请求发送给其他Replica，并从其他Replica复制数据到该机器。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>2003年GFS的横空出世具有划时代的意义，它标志着学术上的分布式理论和一些实验性质的尝试在工业界有了大规模商用的案例，尤其还是在Google这样的公司。它的系统设计在后续的系统中被屡次参考复用，而其设计确实有独到之处，比如Master负责控制流而完全将数据流从其剥离，这样的设计不能不说是优雅。这篇论文催生了HDFS，至今仍被许多公司使用，足以可见其影响力之大。哪怕这篇论文距离今天已经有快20年的时间，GFS在Google内部迭代多次，但是其设计仍然值得每一个分布式程序员学习。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%9B%9E%E9%A1%BEMIT6.824">回顾MIT 6.824</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">
+                <div class="post-card-image" style="background-image: url(/assets/images/bigtable.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Google的三驾马车之Bigtable</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Amazon-Aurora">
+                <div class="post-card-image" style="background-image: url(/assets/images/aurora.jpeg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Amazon-Aurora">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Amazon Aurora</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">浅谈Google的三驾马车之GFS</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS&amp;url=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BGFS"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

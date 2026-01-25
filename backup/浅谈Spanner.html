@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>浅谈Spanner</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%B5%85%E8%B0%88Spanner" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅谈Spanner" />
+    <meta property="og:description" content="上图为扳手。 在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos" />
+    <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Spanner" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/spanner.jpeg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-08-17T19:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-08-17T19:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅谈Spanner" />
+    <meta name="twitter:description" content="上图为扳手。 在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/spanner.jpeg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%B5%85%E8%B0%88Spanner",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/spanner.jpeg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Spanner"
+    },
+    "description": "上图为扳手。 在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。 总体架构 谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下： 论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下： 这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。 Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。 Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。 这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。 数据模型 Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。 这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。 另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下： 可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。 TrueTime 前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示： 其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下 TT.after(t) = TT.now().earliest &gt; t.latest TT.before(t) = TT.now().latest &lt; t.earliest Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。 并发控制 TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型： Leader Leases 在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。 在这里，Spanner要求单个Paxos"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="浅谈Spanner" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="17 August 2020">17 August 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">浅谈Spanner</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/spanner.jpeg)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>上图为扳手。</p>
+
+<p>在2012年的OSDI上，谷歌发表了《Spanner: Google’s Globally-Distributed Database》，其中介绍了谷歌第二代的数据库，也就是Bigtable的继任者——Spanner。在使用Bigtable的过程中，谷歌的开发人员逐渐意识到Bigtable的一些不足之处，比如不能处理变化的数据格式，不能保证大范围内数据库的一致性以及对跨行事务的处理。谷歌为了解决这些问题，开发出了Spanner。</p>
+
+<h2 id="总体架构">总体架构</h2>
+
+<p>谷歌设计Spanner的一个重要目标是对全球范围内的数据库进行管理，为了更加清晰有效地划分和管理数据，Spanner划分了多个层级。其中，最高级的是Universe，在论文中谷歌表示目前只有三个Universe，包括一个用于测试或后台运行的Universe，一个用于部署或生产的Universe和一个仅用于生产的Universe。每个Universe下面包含多个Zone，每个Universe使用UniverseMaster和PlaceDriver检测和管理Zone，这里的Zone就相当于Bigtable的Server，对应实际情况中的一台或多台物理机器。而每个Zone中有一个ZoneMaster管理多个LocationProxy和数百至数千个SpannerServer，其中，LocationProxy负责将客户端的请求转发到对应的SpannerServer。论文中给出的示意图如下：</p>
+
+<p><img src="/assets/images/Spanner structure.png" alt="Spanner structure" /></p>
+
+<p>论文中仅仅披露了SpannerServer的具体内容，所以下面我们也只讨论SpannerServer。由于Spanner是为了代替Bigtable而设计的，所以SpannerServer的内部架构其实和Bigtable有一点类似，但是Spanner又作出了很多优化。内部架构的示意图如下：</p>
+
+<p><img src="/assets/images/Spanner Server.png" alt="Spanner Server" /></p>
+
+<p>这张示意图以三副本的情况为例介绍了Spanner Server的内部架构。Spanner和Bigtable相似的地方在于，他们都基于分布式的文件系统GFS，这里的Colossus是第二代GFS，具体的实现细节仍未公布，而且他们都使用了Tablet作为单位管理存储数据，但是，这里的Tablet和Bigtable中Tablet是有些不同的。但是再上面一层就有些不同了，因为Bigtable中数据基于爬虫获得而且使用了SSTable存储数据，这保证了数据的唯一性，所以在Bigtable中没有使用具体的算法保证数据的一致性，但也因为这一点，Bigtable没有很好地支持事务。Spanner中使用了多副本的机制备份数据，同时在副本之间使用Single Paxos算法保证了数据一致性，在这里，谷歌可能是为了提高Paxos算法的性能并降低耦合，他们并不是把整个机器作为Paxos算法的基本角色，而是将机器中的数据分割为多个Paxos Group，每个机器中的相同数据被标识为同一Group，每次运行Paxos算法都仅由关联的Paxos Group参与。再往上一层就是各机器之间的关系了，Spanner使用主从结构管理副本，Leader节点要额外维护LockTable和Transaction Manager，其中LockTable的作用类似Bigtable中的Chubby，用于协调各副本之间的并发操作，Transaction Manager则用于管理分布式事务。Leader节点还要负责所有的写操作和和其他节点的沟通。</p>
+
+<p>Paxos Group仍然是很大的操作单位，想要更加灵活地进行数据迁移工作就需要更小的数据单位。于是Spanner将每个Paxos Group分割为多个Directory，而每个Directory包含若干个拥有连续前缀Key的数据。不得不说，这里的连续前缀Key有点像SSTable的设计。Spanner将Directory作为物理位置记录的单元，同时也是均衡负载和数据迁移的基础单元。这很好理解，均衡负载是把请求转发到拥有相同数据的机器，数据迁移是把数据从一台机器复制到另一台机器，这两者都需要目的机器的物理地址，所以最小只能把Directory作为单位。</p>
+
+<p>Spanner把在Paxos Group之间迁移Directory设计为后台任务，但是由于数据迁移可能造成读写阻塞，所以它不被设计成事务。操作的时候是先将实际数据移动到指定位置，然后再用一个原子的操作更新元数据，完成整个移动过程。</p>
+
+<p>这里要特别说明的是，Spanner中的Tablet和Bigtable中的Tablet有些不同。Bigtable中的Tablet可以简单地看做是若干连续的有序记录，而Spanner中的Tablet则被设计成一种容器，其不一定是连续的有序记录，而可能包括多个副本的数据。</p>
+
+<h2 id="数据模型">数据模型</h2>
+
+<p>Spanner和Bigtable的数据模型差别也很大，其数据模型如下。很容易地可以发现，其从Bigtable中类似于关系型的数据库变成了类似于K-V的数据库。</p>
+
+<p><img src="/assets/images/Spanner datamodel.png" alt="Spanner datamodel" /></p>
+
+<p>这种变化重要的原因是Bigtable的数据模型仅适用于类似PageRank等数据格式长期稳定且不怎么变化的任务，如果任务需要快速版本迭代可能就不再使用。</p>
+
+<p>另一方面，在Google内部有一个Megastore数据库，尽管要忍受性能不够的折磨，但是在Google有300多个应用在用它，包括Gmail, Picasa, Calendar, Android Market和AppEngine。而这仅仅因为Megastore支持一个类似关系数据库的语法和同步复制。所以，Spanner决定支持数据库的语法，论文中说这种语法类似于SQL语句。其结果如下：</p>
+
+<p><img src="/assets/images/Spanner Data Example.png" alt="Spanner Data Example" /></p>
+
+<p>可以看到，Spanner底层的存储结构仍然是K-V的形式，但是在创建Albums的表时，其指出了父类表为User，那么在Directory中组织成了上图中关联的User和Albums相邻的形式。那么在进行SQL查询的时候，就可以通过顺序读写得到数据，相比随机读写要快得多。</p>
+
+<h2 id="truetime">TrueTime</h2>
+
+<p>前面讨论了Spanner总体架构，内部架构以及数据模型，平常的论文可能到此就结束了，但是这篇论文到这里进入最重要的部分，因为Spanner引入了一个开创性的想法，使用TrueTime标记时间。而TrueTime指的是真实的时间戳，谷歌使用GPS和原子钟两个物理元件得到这个时间。正常情况下使用GPS获取该时间，如果GPS由于电波影响不能工作，那么原子钟就会接替任务直到GPS恢复工作。Spanner中提供了三个和其相关的API，如下图所示：</p>
+
+<p><img src="/assets/images/TrueTime API.png" alt="TrueTime API" /></p>
+
+<p>其中，TT.now()返回的值称为TTinterval，它不是一个确切的时刻，而是一段时间，包括最早时间戳Earlist和最晚时间戳Latest。因为全球范围内的时间总是不可能完全同步，各机器的通信也有延迟，所以只要在一个时间段内，他们就认为是同步的。另外两个函数的伪代码定义如下</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TT.after(t) = TT.now().earliest &gt; t.latest
+TT.before(t) = TT.now().latest &lt; t.earliest
+</code></pre></div></div>
+
+<p>Spanner给每个数据中心都安装了TrueTime系统，有了这三个API，Spanner就能判断两个时间戳的先后关系了，再以此为基础，就能实现很多功能。</p>
+
+<h2 id="并发控制">并发控制</h2>
+
+<p>TrueTime是相当强大的工具，Spanner中相当多的操作都依赖于它。下面的表列举了Spanner支持的操作类型：</p>
+
+<p><img src="/assets/images/Spanner Transaction.png" alt="Spanner Transaction" /></p>
+
+<h3 id="leader-leases">Leader Leases</h3>
+
+<p>在讨论事务之前，我们回到Paxos算法上。与Raft使用的解决方案不同，Spanner不使用Heartbeats来检测是否有失效节点，而是使用Lease来规定Leader的任期。如果Leader执行了写操作，那么它的Lease会自动延长。否则，Spanner默认每十秒Leader要发起续租Lease的请求，当收到Quorum的投票后会延长，反之就失去Lease，转变为Follower。</p>
+
+<p>在这里，Spanner要求单个Paxos Group中的Leader Lease中的TrueTime要不相交，因为一旦相交，就意味同一时刻有两个Leader，这是不被允许的。所以，当Leader退出系统或者降级为Follower时，要保证TT.after(t)对每个副本都成立。</p>
+
+<h3 id="读写事务">读写事务</h3>
+
+<p>Spanner保证了强外部一致性：如果一个事务T2开始（Start）在事务T1提交之后发生，那么T2的提交（Commit）时间肯定比T1的提交时间大。简单地说，早到早完成，迟到迟完成。</p>
+
+<p>Spanner使用2PC提交事务，为了保证外部一致性，Spanner对每个事务作出以下两点要求：</p>
+
+<blockquote>
+  <p>Start：事务T的协调者Leader分配了一个提交时间戳S，S不小于TT.now().latest并且S不早于Commit请求到达时间</p>
+
+  <p>Commit Wait：Spanner保证只有当当前时间晚于事务T的提交时间后，其他成员才能看见。</p>
+</blockquote>
+
+<p>论文中的符号表示如下
+<img src="/assets/images/Spanner formula1.png" alt="Spanner Sympol1" />
+<script type="math/tex">e^{Start}_i:事务Start事件\\e^{Server}_i:事务Commit事件请求到达\\e^{Commit}_i:中事务Commit完成事件\\t_{abs}(e):该事务完成的真实时间\\S_{i}:事务Commit的时间戳\\</script>
+那么上述的要求就变为
+<img src="/assets/images/Spanner formula2.png" alt="Spanner Sympol2" />
+<script type="math/tex">% <![CDATA[
+Start:t_{abs}(e^{Server}_i) < S_{i}\\
+Commit Wait:S_{i} < t_{abs}(e^{Commit}_i)\\ %]]></script>
+有如下推断
+<img src="/assets/images/Spanner formula3.png" alt="Spanner Sympol3" />
+<script type="math/tex">% <![CDATA[
+如果\\
+t_{abs}(e^{Commit}_i) < t_{abs}(e^{start}_{i+1})\\
+那么\\
+S_{i} < t_{abs}(e^{Commit}_i)\\
+t_{abs}(e^{Commit}_i) < t_{abs}(e^{start}_{i+1})\\
+t_{abs}(e^{start}_{i+1}) < t_{abs}(e^{server}_{i+1})\\
+t_{abs}(e^{Server}_{i+1}) < S_{i+1}\\
+所以\\
+S_{i} < S_{i+1} %]]></script>
+所以，只要满足上述两个要求，就能实现外部一致性。而Spanner中使用Coordinate Leader来实现这两个要求。</p>
+
+<p>另外，还需要保证任意时间读取到的数据都是可靠的安全的。Spanner通过规定安全时间保证任意时间的读。论文中安全时间的定义为
+<img src="/assets/images/Spanner formula4.png" alt="Spanner Safe" />
+<script type="math/tex">t_{sate}=min(t^{Paxos}_{safe},t^{TM}_{safe})\\
+t^{Paxos}_{safe}:Paxos算法能保证的安全时间\\
+t^{TM}_{safe}:事务管理器能保证的安全时间</script>
+其中，Paxos算法能保证的安全时间是最近Paxos算法写入数据的时间。事务管理器能保证的安全时间在，没有事务处于Prepare阶段的情况下，是无限大的。因为它无法确定第二阶段的事务可能发生什么。如果有事务已经完成Prepare阶段，那么它的值就是完成Prepare阶段的事务中最早的时间-1。在这个时间前，事务管理器能保证所有已提交的数据都被看见。只要读取的数据在这个时间之前，那么这个数据就是安全的。</p>
+
+<p>以下是读写事务的具体流程</p>
+
+<blockquote>
+  <ol>
+    <li>执行读操作时，Spanner先找到相关数据的副本，然后加上读锁并读取最新的数据。在事务开启的时候，客户端会发送Keeplive消息防止超时。</li>
+    <li>当客户端完成了所有的读操作并缓存了所有的写操作，就准备开始2PC。客户端选择一个Coordinator Group，并给每一个相关的Leader发送Coordinator的id和缓存的写数据。</li>
+    <li>每个和事务相关的Leader（除了Coordinator Leader）会尝试得到一个写锁，然后选取一个比现有事务晚的时间戳并通过Paxos发送给其他副本。（这里是为了保证上面的假设）</li>
+    <li>Coordinator Leader一开始也会上个写锁，但是会跳过Prepare阶段。当接受到其他Leader的时间戳之后，他会选择一个提交时间戳。这个提交的时间戳必须满足Start保证并且大于所有完成Prepare阶段的时间戳（安全读取保证）。然后将这个信息通过Paxos记录下来。</li>
+    <li>Coordinator必须等到TT.after(S)成立才能在副本提交事务。这是为了满足Commit Wait保证。这需要等两倍时间误差，大约是20ms。</li>
+    <li>然后Coordinator将提交时间戳发送给客户端还有其他的副本。</li>
+  </ol>
+</blockquote>
+
+<h3 id="只读事务">只读事务</h3>
+
+<p>一个只读的事务会分2阶段来执行：先给该事务分配一个时间戳，然后执行事务的读操作。相当于通过快照读来读取时刻S的值。那么只需要保证如下要求，由于时间永远向前，所以能保证读取的是最新的数据。
+<img src="/assets/images/Spanner formula5.png" alt="Spanner Sympol5" />
+<script type="math/tex">S_{read}=TT.now().least</script>
+以下是只读事务的具体流程</p>
+
+<blockquote>
+  <ol>
+    <li>由于读操作涉及多个Paxos Group，所以要通过协商阶段决定这个值Scope。</li>
+    <li>如果Scope只被一个Paxos Group处理，那么客户端会把只读事务发给那个的Leader。我们把LastTS()定义为Paxos组里最后一个写操作提交的时间戳。如果没有prepare阶段的事务，那么让S = LastTS()就能满足要求。</li>
+    <li>如果Scope会被多个Paxos Group处理，Spanner当前的实现是一个简单的方案。客户端会让S = TT.now().latest，然后以S时间戳执行读操作。所有事务里的读操作都会被发送到数据足够新的副本。</li>
+  </ol>
+</blockquote>
+
+<h2 id="总结">总结</h2>
+
+<p>谷歌充分了利用了使用Bigtable的丰富经验，设计出了Spanner。Spanner的全球架构和内部架构虽然精巧，但和Amazon的Aurora比起来也没有过人的地方。但是，TrueTime的提出和其在事务中的使用实在令人惊叹。以前的工作，比如2PC的交互和Raft中的Index，又或者是现在流行的消息队列，几乎都是通过自增的主键或者是逻辑上的前置条件判断事务的先后。Spanner简单粗暴却优雅地使用了时间，这一永远自增不会重复的量解决了这个问题。同时使用时间还直接解决了全球范围内的数据同步这一问题，而这一问题直接使用逻辑上的先后是无法实现的。这应该是我在6.824这门课上读到的最强的也是最令人赞叹的系统了。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%9B%9E%E9%A1%BEMIT6.824">回顾MIT 6.824</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Memcache">
+                <div class="post-card-image" style="background-image: url(/assets/images/memcache.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Memcache">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Memcache</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6">
+                <div class="post-card-image" style="background-image: url(/assets/images/troika.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">总结Google的三驾马车</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">浅谈Spanner</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%B5%85%E8%B0%88Spanner&amp;url=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Spanner"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Spanner"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

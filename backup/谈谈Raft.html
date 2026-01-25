@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>浅谈Raft</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E8%B0%88%E8%B0%88Raft" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅谈Raft" />
+    <meta property="og:description" content="上图为Steam同名游戏———RAFT Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。 Paxos算法的不足 了解过Paxos算法的朋友都知道，Paxos算法最后提出了2PC的机制来保证共识。但是，我们也提到了，两段式的请求消耗过大，而且多Proposer的前提也很难实现，Proposal的数据结构也未提及。总之，Basic Paxos算法在工程上有非常多的实现困难。另一方面，也就是上文提到的，非常难于理解。而Raft正是为了解决这两大问题，它提出并总结了系统中节点的角色，各角色的功能和职责，需要使用的RPC及其参数和逻辑，甚至连数据结构都清楚地给出了定义。这简直就像手把手教开发人员实现算法。而也正是由于清晰详细的介绍，Raft算法理解起来也相当地容易，顺带一提，可能是为了“便于理解”，论文本身的行文和用词也相当地简单。 Raft Raft算法使用Leader代替Paxos中的多个Proposer，使用Log Entry代替Proposal，以此简化问题。也因此，Raft算法将整个共识性问题划分为Leader Election，Log Replication两大块，同时，为了解决在崩溃时可能出现的问题，还提出了Safety的问题。此外，Raft还提供了Snapshot和Membership Change的解决方案。 Raft将系统中的角色划分为三种，Leader，Candidate和Follower。整个系统只有三种种通信方式，AppendEntryies PRC，RequestVote RPC和InstallSnapshot RPC。其中，AppendEntries RPC只能由Leader发出，用于向Follower追加Log Entry或者广播Heartbeats，RequestVote只能由Candidate发出，用于发起Leader Election，InstallSnapshot RPC只能由Leader发出，用于向Follower发送快照。 Leader Election Raft将系统中的角色划分为三种，Leader，Candidate和Follower。所有机器初试为Follower，他们三者的转化关系如下： Follower-&gt;Candidate：当自身的计时器超时后，将自身转变为Candidate Candidate-&gt;Leader：当Candidate获得Quorum的选票时，成为Leader Candidate-&gt;Follower：当Candidate在RequestVote RPC中收到的Term大于该自己的Term，或者收到Term大于等于该自己Term的AppendEntries PRC时，就变为Follower Leader-&gt;Follower：当在RPC中收到的Term大于该机器的Term时，自动变为Follower 要特别说明的是，只有Candidate才能成为Leader，所以只有Candidate才能发起Leader Election。下面，我们逐条来分析这么做的理由。 Follower-&gt;Candidate：首先，我们要声明的是，Raft规定了一个时限，如果在这个时限内没有收到Heartbeat（即不携带信息的AppendEnyties RPC），那么就认为超时了。假设在初始系统中，所有的机器角色都是Follower，但是只有Candidate才能发起选举，那么要怎么才能得到Leader呢？于是，这一条的作用就出现了。由于系统中没有Leader，那么就不会有Heartbeats，也就是说必定有一个Follower会超时，按着这一条的转换关系，此Follower会转变成Candidate，然后发出Leader Election请求，直到系统中出现Leader。还有一种情况，本来正常工作的系统的Leader崩溃了，同样地，由于收不到Heartbeats，其中的Follower会转变成Candidate发起Leader Election，保证系统正常运行。 Candidate-&gt;Leader：这一条其实无需多言，按照Paxos中提出的Quorum机制，获得多数承认的机器可以成为Leader。 Candidate-&gt;Follower：不同的Term代表不同的Leader周期，而且Term是自增的。Candidate会在发起Leader Election之前将自己的Term加一，代表自己比之前的Leader更新。而如果收到了一个大于自己的Term的RequestVote RPC，这就意味有机器在时间上比自己更新，所以就应该主动退出竞争。如果仅仅收到和自己Term相同的RequestVote RPC，这意味着在这一轮选举中有竞争者，谁能成为Leader就要看网络的连通情况，这就无需变为Follower了。而如果它收到了一个AppendEntries RPC且Term大于等于自己，而此RPC仅可能由Leader发出，这就意味本轮已经选出Leader或者有更新的Leader了，此时就应该退出竞争。 Leader-&gt;Follower：我们知道Term的大小代表Leader的新旧，也就是说，当在RPC中接收到的Term大于自己时，有一个新的Leader被选出了。这种情况有可能由于暂时的网络故障，使得此Leader不能与其他机器连通，而当剩余机器选出Leader后网络恢复了，那么此机器中存储的数据很可能不够完整，所以应该让位给新的Leader。 有了以上的要求，整个系统的角色转换已经可以顺利流转了。还需要关注的，是RequestVote RPC中的投票逻辑。在Raft算法中，使用“先来先投票”的原则，这个原则暗示了在多个Candidate竞争的过程中，与其他节点通信良好的会更有可能赢得选举。也就是说，选举出来的Leader与其他节点的通信延迟低，从而提升了系统的性能。但是，当本机器的Term大于RequestVote RPC中的Term时，说明本机器比发送请求的机器更新，此时应当拒绝请求。 不过，假如有一种极端情况：在某种条件下，所有的节点同时成为Candidate。而按照上述策略，它们首先会投自己一票，从而产生人均一票的情况，然后重新开始选举，如此往复。为了避免这种情况，Raft使用等待随机时间后再发起选举的解决方案。 Log Replication Raft中的Log" />
+    <meta property="og:url" content="http://localhost:4000/%E8%B0%88%E8%B0%88Raft" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/raft.jpg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-07-19T18:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-07-19T18:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅谈Raft" />
+    <meta name="twitter:description" content="上图为Steam同名游戏———RAFT Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。 Paxos算法的不足 了解过Paxos算法的朋友都知道，Paxos算法最后提出了2PC的机制来保证共识。但是，我们也提到了，两段式的请求消耗过大，而且多Proposer的前提也很难实现，Proposal的数据结构也未提及。总之，Basic Paxos算法在工程上有非常多的实现困难。另一方面，也就是上文提到的，非常难于理解。而Raft正是为了解决这两大问题，它提出并总结了系统中节点的角色，各角色的功能和职责，需要使用的RPC及其参数和逻辑，甚至连数据结构都清楚地给出了定义。这简直就像手把手教开发人员实现算法。而也正是由于清晰详细的介绍，Raft算法理解起来也相当地容易，顺带一提，可能是为了“便于理解”，论文本身的行文和用词也相当地简单。 Raft Raft算法使用Leader代替Paxos中的多个Proposer，使用Log Entry代替Proposal，以此简化问题。也因此，Raft算法将整个共识性问题划分为Leader Election，Log Replication两大块，同时，为了解决在崩溃时可能出现的问题，还提出了Safety的问题。此外，Raft还提供了Snapshot和Membership Change的解决方案。 Raft将系统中的角色划分为三种，Leader，Candidate和Follower。整个系统只有三种种通信方式，AppendEntryies PRC，RequestVote RPC和InstallSnapshot RPC。其中，AppendEntries RPC只能由Leader发出，用于向Follower追加Log Entry或者广播Heartbeats，RequestVote只能由Candidate发出，用于发起Leader Election，InstallSnapshot RPC只能由Leader发出，用于向Follower发送快照。 Leader Election Raft将系统中的角色划分为三种，Leader，Candidate和Follower。所有机器初试为Follower，他们三者的转化关系如下： Follower-&gt;Candidate：当自身的计时器超时后，将自身转变为Candidate Candidate-&gt;Leader：当Candidate获得Quorum的选票时，成为Leader Candidate-&gt;Follower：当Candidate在RequestVote RPC中收到的Term大于该自己的Term，或者收到Term大于等于该自己Term的AppendEntries PRC时，就变为Follower Leader-&gt;Follower：当在RPC中收到的Term大于该机器的Term时，自动变为Follower 要特别说明的是，只有Candidate才能成为Leader，所以只有Candidate才能发起Leader Election。下面，我们逐条来分析这么做的理由。 Follower-&gt;Candidate：首先，我们要声明的是，Raft规定了一个时限，如果在这个时限内没有收到Heartbeat（即不携带信息的AppendEnyties RPC），那么就认为超时了。假设在初始系统中，所有的机器角色都是Follower，但是只有Candidate才能发起选举，那么要怎么才能得到Leader呢？于是，这一条的作用就出现了。由于系统中没有Leader，那么就不会有Heartbeats，也就是说必定有一个Follower会超时，按着这一条的转换关系，此Follower会转变成Candidate，然后发出Leader Election请求，直到系统中出现Leader。还有一种情况，本来正常工作的系统的Leader崩溃了，同样地，由于收不到Heartbeats，其中的Follower会转变成Candidate发起Leader Election，保证系统正常运行。 Candidate-&gt;Leader：这一条其实无需多言，按照Paxos中提出的Quorum机制，获得多数承认的机器可以成为Leader。 Candidate-&gt;Follower：不同的Term代表不同的Leader周期，而且Term是自增的。Candidate会在发起Leader Election之前将自己的Term加一，代表自己比之前的Leader更新。而如果收到了一个大于自己的Term的RequestVote RPC，这就意味有机器在时间上比自己更新，所以就应该主动退出竞争。如果仅仅收到和自己Term相同的RequestVote RPC，这意味着在这一轮选举中有竞争者，谁能成为Leader就要看网络的连通情况，这就无需变为Follower了。而如果它收到了一个AppendEntries RPC且Term大于等于自己，而此RPC仅可能由Leader发出，这就意味本轮已经选出Leader或者有更新的Leader了，此时就应该退出竞争。 Leader-&gt;Follower：我们知道Term的大小代表Leader的新旧，也就是说，当在RPC中接收到的Term大于自己时，有一个新的Leader被选出了。这种情况有可能由于暂时的网络故障，使得此Leader不能与其他机器连通，而当剩余机器选出Leader后网络恢复了，那么此机器中存储的数据很可能不够完整，所以应该让位给新的Leader。 有了以上的要求，整个系统的角色转换已经可以顺利流转了。还需要关注的，是RequestVote RPC中的投票逻辑。在Raft算法中，使用“先来先投票”的原则，这个原则暗示了在多个Candidate竞争的过程中，与其他节点通信良好的会更有可能赢得选举。也就是说，选举出来的Leader与其他节点的通信延迟低，从而提升了系统的性能。但是，当本机器的Term大于RequestVote RPC中的Term时，说明本机器比发送请求的机器更新，此时应当拒绝请求。 不过，假如有一种极端情况：在某种条件下，所有的节点同时成为Candidate。而按照上述策略，它们首先会投自己一票，从而产生人均一票的情况，然后重新开始选举，如此往复。为了避免这种情况，Raft使用等待随机时间后再发起选举的解决方案。 Log Replication Raft中的Log" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/raft.jpg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E8%B0%88%E8%B0%88Raft",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/raft.jpg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E8%B0%88%E8%B0%88Raft"
+    },
+    "description": "上图为Steam同名游戏———RAFT Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。 Paxos算法的不足 了解过Paxos算法的朋友都知道，Paxos算法最后提出了2PC的机制来保证共识。但是，我们也提到了，两段式的请求消耗过大，而且多Proposer的前提也很难实现，Proposal的数据结构也未提及。总之，Basic Paxos算法在工程上有非常多的实现困难。另一方面，也就是上文提到的，非常难于理解。而Raft正是为了解决这两大问题，它提出并总结了系统中节点的角色，各角色的功能和职责，需要使用的RPC及其参数和逻辑，甚至连数据结构都清楚地给出了定义。这简直就像手把手教开发人员实现算法。而也正是由于清晰详细的介绍，Raft算法理解起来也相当地容易，顺带一提，可能是为了“便于理解”，论文本身的行文和用词也相当地简单。 Raft Raft算法使用Leader代替Paxos中的多个Proposer，使用Log Entry代替Proposal，以此简化问题。也因此，Raft算法将整个共识性问题划分为Leader Election，Log Replication两大块，同时，为了解决在崩溃时可能出现的问题，还提出了Safety的问题。此外，Raft还提供了Snapshot和Membership Change的解决方案。 Raft将系统中的角色划分为三种，Leader，Candidate和Follower。整个系统只有三种种通信方式，AppendEntryies PRC，RequestVote RPC和InstallSnapshot RPC。其中，AppendEntries RPC只能由Leader发出，用于向Follower追加Log Entry或者广播Heartbeats，RequestVote只能由Candidate发出，用于发起Leader Election，InstallSnapshot RPC只能由Leader发出，用于向Follower发送快照。 Leader Election Raft将系统中的角色划分为三种，Leader，Candidate和Follower。所有机器初试为Follower，他们三者的转化关系如下： Follower-&gt;Candidate：当自身的计时器超时后，将自身转变为Candidate Candidate-&gt;Leader：当Candidate获得Quorum的选票时，成为Leader Candidate-&gt;Follower：当Candidate在RequestVote RPC中收到的Term大于该自己的Term，或者收到Term大于等于该自己Term的AppendEntries PRC时，就变为Follower Leader-&gt;Follower：当在RPC中收到的Term大于该机器的Term时，自动变为Follower 要特别说明的是，只有Candidate才能成为Leader，所以只有Candidate才能发起Leader Election。下面，我们逐条来分析这么做的理由。 Follower-&gt;Candidate：首先，我们要声明的是，Raft规定了一个时限，如果在这个时限内没有收到Heartbeat（即不携带信息的AppendEnyties RPC），那么就认为超时了。假设在初始系统中，所有的机器角色都是Follower，但是只有Candidate才能发起选举，那么要怎么才能得到Leader呢？于是，这一条的作用就出现了。由于系统中没有Leader，那么就不会有Heartbeats，也就是说必定有一个Follower会超时，按着这一条的转换关系，此Follower会转变成Candidate，然后发出Leader Election请求，直到系统中出现Leader。还有一种情况，本来正常工作的系统的Leader崩溃了，同样地，由于收不到Heartbeats，其中的Follower会转变成Candidate发起Leader Election，保证系统正常运行。 Candidate-&gt;Leader：这一条其实无需多言，按照Paxos中提出的Quorum机制，获得多数承认的机器可以成为Leader。 Candidate-&gt;Follower：不同的Term代表不同的Leader周期，而且Term是自增的。Candidate会在发起Leader Election之前将自己的Term加一，代表自己比之前的Leader更新。而如果收到了一个大于自己的Term的RequestVote RPC，这就意味有机器在时间上比自己更新，所以就应该主动退出竞争。如果仅仅收到和自己Term相同的RequestVote RPC，这意味着在这一轮选举中有竞争者，谁能成为Leader就要看网络的连通情况，这就无需变为Follower了。而如果它收到了一个AppendEntries RPC且Term大于等于自己，而此RPC仅可能由Leader发出，这就意味本轮已经选出Leader或者有更新的Leader了，此时就应该退出竞争。 Leader-&gt;Follower：我们知道Term的大小代表Leader的新旧，也就是说，当在RPC中接收到的Term大于自己时，有一个新的Leader被选出了。这种情况有可能由于暂时的网络故障，使得此Leader不能与其他机器连通，而当剩余机器选出Leader后网络恢复了，那么此机器中存储的数据很可能不够完整，所以应该让位给新的Leader。 有了以上的要求，整个系统的角色转换已经可以顺利流转了。还需要关注的，是RequestVote RPC中的投票逻辑。在Raft算法中，使用“先来先投票”的原则，这个原则暗示了在多个Candidate竞争的过程中，与其他节点通信良好的会更有可能赢得选举。也就是说，选举出来的Leader与其他节点的通信延迟低，从而提升了系统的性能。但是，当本机器的Term大于RequestVote RPC中的Term时，说明本机器比发送请求的机器更新，此时应当拒绝请求。 不过，假如有一种极端情况：在某种条件下，所有的节点同时成为Candidate。而按照上述策略，它们首先会投自己一票，从而产生人均一票的情况，然后重新开始选举，如此往复。为了避免这种情况，Raft使用等待随机时间后再发起选举的解决方案。 Log Replication Raft中的Log"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="浅谈Raft" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="19 July 2020">19 July 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">浅谈Raft</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/raft.jpg)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>上图为Steam同名游戏———RAFT</p>
+
+<p>Raft算法是由Diego Ongaro和John Ousterhout于2014年提出的共识性算法。在斯坦福当助教时，他发现学生很难理解Paxos算法，所以他希望能用一种更简单易懂的算法来代替Paxos，以此为契机，他把便于理解作为目的，提出了Raft算法。</p>
+
+<h2 id="paxos算法的不足">Paxos算法的不足</h2>
+
+<p>了解过Paxos算法的朋友都知道，Paxos算法最后提出了2PC的机制来保证共识。但是，我们也提到了，两段式的请求消耗过大，而且多Proposer的前提也很难实现，Proposal的数据结构也未提及。总之，Basic Paxos算法在工程上有非常多的实现困难。另一方面，也就是上文提到的，非常难于理解。而Raft正是为了解决这两大问题，它提出并总结了系统中节点的角色，各角色的功能和职责，需要使用的RPC及其参数和逻辑，甚至连数据结构都清楚地给出了定义。这简直就像手把手教开发人员实现算法。而也正是由于清晰详细的介绍，Raft算法理解起来也相当地容易，顺带一提，可能是为了“便于理解”，论文本身的行文和用词也相当地简单。</p>
+
+<h2 id="raft">Raft</h2>
+
+<p>Raft算法使用Leader代替Paxos中的多个Proposer，使用Log Entry代替Proposal，以此简化问题。也因此，Raft算法将整个共识性问题划分为Leader Election，Log Replication两大块，同时，为了解决在崩溃时可能出现的问题，还提出了Safety的问题。此外，Raft还提供了Snapshot和Membership Change的解决方案。</p>
+
+<p>Raft将系统中的角色划分为三种，Leader，Candidate和Follower。整个系统只有三种种通信方式，AppendEntryies PRC，RequestVote RPC和InstallSnapshot RPC。其中，AppendEntries RPC只能由Leader发出，用于向Follower追加Log Entry或者广播Heartbeats，RequestVote只能由Candidate发出，用于发起Leader Election，InstallSnapshot RPC只能由Leader发出，用于向Follower发送快照。</p>
+
+<h3 id="leader-election">Leader Election</h3>
+
+<p>Raft将系统中的角色划分为三种，Leader，Candidate和Follower。所有机器初试为Follower，他们三者的转化关系如下：</p>
+
+<p><img src="/assets/images/state transfer.png" alt="state transfer" /></p>
+
+<blockquote>
+  <p>Follower-&gt;Candidate：当自身的计时器超时后，将自身转变为Candidate</p>
+
+  <p>Candidate-&gt;Leader：当Candidate获得Quorum的选票时，成为Leader</p>
+
+  <p>Candidate-&gt;Follower：当Candidate在RequestVote RPC中收到的Term大于该自己的Term，或者收到Term大于等于该自己Term的AppendEntries PRC时，就变为Follower</p>
+
+  <p>Leader-&gt;Follower：当在RPC中收到的Term大于该机器的Term时，自动变为Follower</p>
+</blockquote>
+
+<p>要特别说明的是，只有Candidate才能成为Leader，所以只有Candidate才能发起Leader Election。下面，我们逐条来分析这么做的理由。</p>
+
+<p>Follower-&gt;Candidate：首先，我们要声明的是，Raft规定了一个时限，如果在这个时限内没有收到Heartbeat（即不携带信息的AppendEnyties RPC），那么就认为超时了。假设在初始系统中，所有的机器角色都是Follower，但是只有Candidate才能发起选举，那么要怎么才能得到Leader呢？于是，这一条的作用就出现了。由于系统中没有Leader，那么就不会有Heartbeats，也就是说必定有一个Follower会超时，按着这一条的转换关系，此Follower会转变成Candidate，然后发出Leader Election请求，直到系统中出现Leader。还有一种情况，本来正常工作的系统的Leader崩溃了，同样地，由于收不到Heartbeats，其中的Follower会转变成Candidate发起Leader Election，保证系统正常运行。</p>
+
+<p>Candidate-&gt;Leader：这一条其实无需多言，按照Paxos中提出的Quorum机制，获得多数承认的机器可以成为Leader。</p>
+
+<p>Candidate-&gt;Follower：不同的Term代表不同的Leader周期，而且Term是自增的。Candidate会在发起Leader Election之前将自己的Term加一，代表自己比之前的Leader更新。而如果收到了一个大于自己的Term的RequestVote RPC，这就意味有机器在时间上比自己更新，所以就应该主动退出竞争。如果仅仅收到和自己Term相同的RequestVote RPC，这意味着在这一轮选举中有竞争者，谁能成为Leader就要看网络的连通情况，这就无需变为Follower了。而如果它收到了一个AppendEntries RPC且Term大于等于自己，而此RPC仅可能由Leader发出，这就意味本轮已经选出Leader或者有更新的Leader了，此时就应该退出竞争。</p>
+
+<p>Leader-&gt;Follower：我们知道Term的大小代表Leader的新旧，也就是说，当在RPC中接收到的Term大于自己时，有一个新的Leader被选出了。这种情况有可能由于暂时的网络故障，使得此Leader不能与其他机器连通，而当剩余机器选出Leader后网络恢复了，那么此机器中存储的数据很可能不够完整，所以应该让位给新的Leader。</p>
+
+<p>有了以上的要求，整个系统的角色转换已经可以顺利流转了。还需要关注的，是RequestVote RPC中的投票逻辑。在Raft算法中，使用“先来先投票”的原则，这个原则暗示了在多个Candidate竞争的过程中，与其他节点通信良好的会更有可能赢得选举。也就是说，选举出来的Leader与其他节点的通信延迟低，从而提升了系统的性能。但是，当本机器的Term大于RequestVote RPC中的Term时，说明本机器比发送请求的机器更新，此时应当拒绝请求。</p>
+
+<p>不过，假如有一种极端情况：在某种条件下，所有的节点同时成为Candidate。而按照上述策略，它们首先会投自己一票，从而产生人均一票的情况，然后重新开始选举，如此往复。为了避免这种情况，Raft使用等待随机时间后再发起选举的解决方案。</p>
+
+<h3 id="log-replication">Log Replication</h3>
+
+<p>Raft中的Log Entry对应于Paxos中的Proposal，但是它远比Propsal具体实际，也比Propsal强大。它是Write-ahead Log（WAL），也就是说，它在执行之前就被存储在可靠的磁盘上了，这种方案被广泛地用在实际的分布式系统中，以此提供一定的容错能力。</p>
+
+<p>在Raft中，Log Entry使用Term和Index来标记自己，以此区别不同Log Entry并比较其新旧程度。其中，Term代表不同的Leader周期，而Index代表在同一个Leader周期中的不同Log Entry。Log Entry的整个生命周期如下：</p>
+
+<blockquote>
+  <ol>
+    <li>Client向Leader发送请求{x-&gt;1}，Leader将其包装成Log Entry，追加到自己的Log Entries尾部，此时该log Entry的状态为Append</li>
+    <li>Leader使用AppendEntries RPC将这条Log Entry广播给所有的Follower，要求Follower也将其追加到自己的Log Entries的尾部</li>
+    <li>当Follower完成后，会送回AppendEntries RPC的回答，这个回答可能是成功，也可能是失败。</li>
+    <li>如果Leader收到Quorum个的成功的回应，他会将其状态设为Commited，表示已经在Quorum个Follower中写入该请求。如果没有，则重新发送。</li>
+    <li>在将该Log Entry设为Commited后，Leader就可以在机器中执行{x-&gt;1}，同时将结果返回给Client。此时，该Log Entry的状态为Applied。各Follower则会在后台选择时间执行该命令。</li>
+  </ol>
+</blockquote>
+
+<p>综上所述，Log Entry一共有三种状态，Append，Commited和Applied。</p>
+
+<p>Append状态表示仅仅被追加到了Leader的Log Entries中，此时既未被其他机器承认，也未被执行。唯一的好消息是，它被存储在Leader的磁盘中了，哪怕Leader暂时崩溃了，只要系统恢复后该机器仍然是Leader，也能读取其中内容，继续向下执行操作。</p>
+
+<p>Commited状态表示此Log Entry已经得到了系统中Quorum个机器的共识，在这个状态下，它能够承受2f+1个机器中f个机器的崩溃，一旦系统恢复，它可以被安全地执行。</p>
+
+<p>Applied状态表示它已经被执行过了，只要处于该状态，那么在形成快照时，它就可以被删除。不过，由于各机器都在后台执行命令，Raft仅保证Log Entry最后能被执行但不保证执行的一致性。</p>
+
+<p>在追加Log Entry和维护Log Entry的过程中，Raft必须维护一下两条准则</p>
+
+<blockquote>
+  <ul>
+    <li>如果在两个不同机器上的Log Entry拥有同样的Term和Index，那么这个Log Entry包含的Command相同</li>
+    <li>如果在两个不同机器上的Log Entry拥有同样的Term和Index，那么在这个Log Entry以前所有Log Entry都相同</li>
+  </ul>
+</blockquote>
+
+<p>由于每个Term仅有一个Leader，而Leader给每个Log Entry标记的Index不同，这就意味着Log Entry的Term和Index构成了全局唯一性。这个特性保证了第一条准则。</p>
+
+<p>第二个准则由AppendEntries RPC的内部逻辑保证。AppendEntries PRC的请求中带有PrevLogIndex和PrevLogTerm两个参数用来验证Follower中最新的Log Entry是否和Leader一致，这两个参数是AppendEntries RPC中Log Entry的前一个Log Entry的Index和Term。一旦发现不一致，Follower被要求删掉此Log Entry并返回失败，在一下次AppendEntries RPC时，Leader会将这两个参数改为当前Log Entry的前两个Log Entry的Index和Term，以此类推。直到找到Follower和Leader匹配的位置后，Leader会把从匹配位置开始直到最后的Log Entry全部发送给Follower。Leader通过这种强制更换的方式实现了第二条准则。这里要特别指出的是，在正常情况下不会出现Follower和Leader不匹配的情况，只有在机器崩溃的时候才可能出现，而这种强制更换掉的Log Entry中有两种情况，被删除和位置变更。其中被删除的Log Entry只有可能处于Append状态，位置变更的Log Entry则处于Commited状态。</p>
+
+<p>除此之外，AppendEntries RPC还要喝RequestVote RPC一样检查当前Term是否小于请求中的Term，否则将拒绝请求。在Leader的CommitedIndex大于本机器的CommitedIndex时，还应将本机器的CommitedIndex设为LeaderCommitedIndex和本机最新Index中的小的值，从而能跟上Leader的处理节奏。</p>
+
+<h3 id="safety">Safety</h3>
+
+<p>由于系统中的机器有可能发生故障和崩溃，而此时会产生许多意外的情况，所以Raft给Leader Election和Log Replication增加了一些限制来解决这些情况。</p>
+
+<h4 id="election-resitriction">Election Resitriction</h4>
+
+<p>如果按照原来的Leader Election的要求，那么我们可能会出现下面的情况。有一台原来网络状况不是那么好的机器，它能赶得上当前的Term，但是不能收到最新的Log Entry，假设它在同Term中总比其他机器少一个Log Entry。此时由于某种原因，它的网络状况改善了并按照选举原则拿到多数票，赢得了选举，成为Leader。那么，按照AppendEntries RPC的要求，它会删除掉其他机器中比它快的那一个Log Entry，然而这个Log Entry已经被Commited了，这就出现了问题，这个系统虽然保证了一致性但是却损失了信息。所以Raft在RequestVote RPC中添加了一个逻辑：通过和AppendEntries RPC一样的方式进行比较，如果Candidate的Log Entry比自己的旧，就投拒绝票，只有Candidate和自己一样新或者比自己更新才投同意票。</p>
+
+<p>基于这个约束和AppendEntries RPC中的Quorum原则，如果2f+1个中有f个机器未收到最新的Log Entry，那么在选举中，他们最多只能拿到f票，从而无法成为Leader。我们可以得出结论，只有拥有最新的Log Entry的Candidate才能成为Leader。</p>
+
+<h4 id="committing-entries-from-previous-terms">Committing Entries From Previous Terms</h4>
+
+<p>假设有如图情况</p>
+
+<p><img src="/assets/images/overwrite.png" alt="overwrite" /></p>
+
+<p>其中，黑框代表Leader，Log Entry中的数字代表Term。由图可知，在Term（2）中，S1是Leader，它向S1和S2写入了Log Entry但是由于某些原因宕机了。此时，S5得到S3，S4和自己的投票成为Term（3）的Leader。但是，仅仅把Log Entry追加到本机上后，在向其他服务器发送Log Entry之前就崩溃了，注意，此时该Log Entry未被Commited。此时，S1又成为了Term（4）的Leader，在它把一个Log Entry复制给S3后，由于某些原因又崩溃了。按照上述的选举原则，S5仍然可以拿到S2，S3，S4的投票，当他成为Term（5）的Leader后，它还未收到任何Client的请求，于是它按照AppendEntries的的逻辑使用强制替换保证了一致性。但是，值得注意的是，它使用Term（3）的Log Entry覆盖了Term（4）的Log Entry。这种情况是不被允许的，旧的数据是不能覆盖新的数据的。于是，Raft提出了约束：只有和当前Term相同的Log Entry才能被Commited。</p>
+
+<p>通过这个约束，上述的蓝色Log Entry就不会在重启后重新发送给其他机器，而客户端也永远不会收到它想要的答复。此时，如果Client需要此命令被执行，那么它需要重新发送请求。</p>
+
+<h3 id="membership-change">Membership Change</h3>
+
+<p>上面的三个部分其实已经完成了Raft算法的主体介绍，这一部分讨论的是Raft算法如何解决成员变更的问题，成员的组成在Raft中被称为Configuration。成员变更意味着Quorum的总人数和成员的变化，所以无论是对Leader Election还是Log Replication都有很大的影响。</p>
+
+<p><img src="/assets/images/membership.png" alt="membership" /></p>
+
+<p>如上图所示，在指定时刻，S1，S2在旧的Configuration中，S3，S4，S5在新的成员中，但此时整个的成员交接还未完成。所以，对于旧的Configuration来说，S1和S2组成了Quorum，对于新的Configuration来说S3，S4，S5组成了Quorum。那么此时就出现了两个Quorum，可以实现两种决策，这是Raft算法必须要避免的。</p>
+
+<p>Raft算法使用Log Entry实现成员变更。当需要进行成员变更时，Leader将包含新Configuration的Quorum以及旧Configuration的Quorum的Log Entry发送给Follower，等待Quorum的回复以此将其设为Commited。在此过程中，由于有部分成员已经收到此Configuration，所以所有的决策都需要在此条件下进行，而由于Leader包含这个Configuration，所以能确保这一点。由于中间态的Configuration既包含旧的Quorum又包含新的Quorum，所以所有的决策都需要两方的同意，这就保证的在这个阶段的决策能符合新旧Configuration的要求。然后，新的Configuration才被广播给所有Follower。同样地，由于至少有一个成员在新的Configuration下工作，所以一旦被广播给Follower，所有决策都要在新的Configuration下进行。这样，就完成了成员变更。</p>
+
+<p>总得来说，Raft引入了一个中间态，在这个中间态中，既包含旧Configuration的Quorum，又包含新Configuration的Quorum，以此满足在此期间决策的正确性。</p>
+
+<p><img src="/assets/images/membershipChange.png" alt="membershipChange" /></p>
+
+<h3 id="snapchat">Snapchat</h3>
+
+<p>在Log Replication中我们说，所有Commited的Log Entry都要被记录在磁盘上，但是磁盘的容量是有限的，如果达到上限了怎么办？很明显地，Raft使用Snapshot记录下机器中此时的状态，再将最新执行的的Log Entry以前的Log Entry全部删除就可以了。</p>
+
+<p>详细地说，Raft算法允许每台机器各自执行Snapshot，而Snapshot必须记录它最后包含的Log Entry的Term和Index作为LastIncludedEntry和LastIncludedIndex来标记自己记录的位置。然后将这个Log Entry及其之前的全部删除就能达到清理空间的效果。</p>
+
+<p>但是，有一个情况我们必须考虑。假如一台机器网络情况和运行状况都很差，它最新的Log Entry甚至没有其他机器的快照新，这时候使用AppendEntries RPC是不能帮助它的，因为对应的Log Entry已经被删掉了。这里就需要Leader使用新的RPC，InstallSnapshot RPC来帮助它。InstallSnapshot RPC包含Leader的Snapshot的数据，LastIncludedEntry和LastIncludedIndex等信息，当这个Follower使用Snapshot更新自己的状态后，它就需要使用LastIncludedEntry和LastIncludedIndex来更新自己记录的信息，然后Leader可以再使用AppendEntryies RPC去更新它的Log Entry。</p>
+
+<h2 id="总结和思考">总结和思考</h2>
+
+<p>Raft相对于Basic Paxos做了很大的改进。</p>
+
+<p>首先，它使用Leader代替了多Proposer，跳过了Prepare阶段，减少了网络请求的消耗。</p>
+
+<p>其次，它显式地明确了使用WSL来作为Propsal的载体，不仅降低了开发难度，还提供了相当的容错能力。</p>
+
+<p>最后，它对容错的场景进行了深入地考虑并且给出了相应的解决方案。</p>
+
+<p>最重要的，Raft在保证共识性的同时明确地实现了数据的一致性，这对于算法落地来说实在难能可贵。</p>
+
+<p>但是，Raft使用的成员变更看起来并不是一个很好的方案。我认为在实践中使用Zookeeper作为成员变更的中间工具可能更加合适易行。</p>
+
+<p>总得来说，Raft算法实至名归，对得起Practical和Understandable的主旨。在GitHub上，有相当部分的项目都使用Raft算法作为他们的核心算法。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%9B%9E%E9%A1%BEMIT6.824">回顾MIT 6.824</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication">
+                <div class="post-card-image" style="background-image: url(/assets/images/craq.png)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Primary-Back-Replication%E5%92%8CChain-Replication">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Primary-Back Replication和Chain Replication</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Paxos">
+                <div class="post-card-image" style="background-image: url(/assets/images/paxos.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Paxos">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Paxos</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">浅谈Raft</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%B5%85%E8%B0%88Raft&amp;url=https://jekyller.github.io/jasper2/%E8%B0%88%E8%B0%88Raft"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E8%B0%88%E8%B0%88Raft"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

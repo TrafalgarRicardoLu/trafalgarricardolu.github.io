@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>我的2020</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%88%91%E7%9A%842020" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="我的2020" />
+    <meta property="og:description" content="我的2020
+
+转眼又是农历新年，家家户户辞旧迎新。在年交之时，总结过去，展望未来，这是去年我给自己定下的目标。不过，去年有个漫长的暑假，于是又给自己的研究生生涯做了计划。这样一来，年更的总结反倒像是半年更的了。
+
+虽然说是2020年的年度总结，但说实话，我对毕业之前在学校待过的匆匆一月也没有太多印象。记得的事也不过是提交实习项目报告和毕业设计两件事。实习报告由于疫情直接变成了自选项目报告，拿了个以前写的Todo List当模板，写了下实现的思路就交上去了。毕业设计则相当地水，然后我在演示的时候竟然出现了Bug，幸好老师不追究，也就匆匆水过。但是那个Bug其实也就是一行代码的关系，事后稍作修改，也就过了。
+
+毕业之后是漫长的暑假。暑假的前一个月，我隔天交叉学习MIT6.824和SICP。6.824实在让我受益匪浅，作为分布式的课程实在是再合适不过。而SICP则似乎名不符实，知乎上盛赞其是程序员的内功，毫不吝啬溢美之词。然而，学完以后我只觉得这门课的价值并没有那么高。这门课中提及的模块化的抽象，黑盒以及流式计算等概念实在太过经典，以至于每一个计算机专业的学生都不可能没有听过，因此再花费一些时间去重新学习用Lisp怎么表达和处理这些概念实在有些浪费。正如在《MIT为何停掉SICP》中提到的“Sussman 指出，现代的软件工程师们的主要工作是为那些他们并不完全理解的复杂的硬件（由于商业机密的缘故，也不可能理解）而写代码。软件层面也存在同样的情况，编程环境是由无所不能的巨大的程序库构成”，SICP的所教授的知识更像是用来独立编写一个模块或者是开发整个软件所需要的知识，而现代分工过于细化和追求商业利益优先而进行的敏捷开发则与其背道而驰。不过，我依旧不能否认当我发现Lisp可以用两个操作写出自己解释器时的赞叹之情。
+
+九月份正式报到，算是开启了研究生生涯（虽然有点水）。流水账地回顾一下这半年的生活。九月份已经大致明确了将来要做的方向，要么分布式数据库，要么后台开发。因为6.824的余毒未清，所以九月份都在看一些额外的论文，Dynamo之类的。所以十月份主要在看CMU15-445的视频，给数据库打个底子并且写相关的课程作业。十一月份则是读《数据库系统概念》，再把MIT6.824的作业认认真真地做完。十二月读了交大出的《现代操作系统》，也读了一些RocksDB的源码。一月份的前一个星期和后一个星期在做TinyKV，而中间两个星期由于考试的缘故，在疯狂划水。
+
+这几个月的学习，也基本是让我决定了走上分布式数据库的道路。
+
+回忆起来，其实每个月的学习还算Solid，这些东西写简历上去找一个不那么好的实习也够用了。但是半年的时间实在是太紧了，分布式的基础理论刚刚入门，数据库的知识也仅仅是了解了个大纲，与这两者相关的计算机网络和操作系统都没有针对性地深入地了解。这些基础知识都只局限于408的范围，如果想要真正在这个方向走下去，必须要有能力修改底层的Linux源码或者自定义通信协议。
+
+不过，值得庆幸的是，我对于Raft算法已经有了一定的理解，至少所有关于Raft的问题，我都有信心答上来。另外，数据库的事务的隔离级别和实现，我也有一套可以自圆其说的理解。但是对于SQL Plan的生成，SQL的执行都还有从理论到实践的距离，毕竟14-445的实验实在算不上有工业级的质量。
+
+这里不妨结合我对分布式数据库的理解，做一个简单的知识梳理。分布式数据库有两大块的知识，分布式和数据库，其中分布式的通信涉及计算机网络，数据库的优化涉及操作系统，正如我上面说的，这两块知识是我必须补齐的。分布式数据库和单机的数据库区别在于两点，一：单机的数据库存储数据具有上限，所以必须将一张表的数据Split到两台机器，这一块负责的是拓展性，可以用Shard做到，二：由于大多数服务需要很强的可用性，所以分布式的数据库还需要提供备份的功能，这一块负责的是可用性，可以用Replica做到。在Shard时，我们要考虑单机数据库事务的ACID的要求，其中，Isolation和Atomic有别于单机数据库。其他的两个概念，Consistency本来就是不准确的概念，需要通过其他三个来保证，Duration和单机一样，都是用WAL来实现的。Atomic其实就是要求一个事务要么在所有机器上都执行，要么都不执行，一般使用2PC来解决这个问题。Isolation在单机中三种实现方案，2PL，TO和OCC，貌似被使用的只有2PL和OCC。这里也对应两种方案，Percolator使用2PL加2PC来解决A和I，Omid使用OCC加2PC来实现A和I。而Replica则比较简单，只需要在一个Group里执行Raft或者Paxos算法就可以了。另外，在读取完需要的数据以后还要执行的Join或者Count等操作就要设计分布式计算的内容，这一块实在不太了解。其他的数据库内容，比如底层使用以LSM Tree为结构的KV存储还是参照传统数据库使用Page的存储都可以视为单机的问题。
+
+最后一部分是对未来的展望和计划。
+
+首当其冲的是表达能力，这么多次面试下来，最大的感觉就是不能将自己学的东西表达出来，并不是不会，而是开始面试以后说话不会深思熟虑，只想更快地回答问题。自我反思以后感觉有两个问题，第一个是心态问题：其实说句自大的话，我自己应该至少是华为保底的，那么大可不必那么害怕失败，面试本质是一个技术交流的场景，在这个场景里不会的就说不会，会的就尽可能地吹起来，不应该有太多的心理负担；第二个是对知识的梳理不够清晰，简历的东西其实都在我自己的脑子里，无非是记得清楚不清楚的问题，但是只有把所有的东西都清楚的梳理一遍，才能在说出来的时候有条理，有自信。我想对于这两点的解决方案是预设一些问题，然后反复地练习怎么回答，最后才能达到想要的状态。
+
+先讲一讲离得近的计划——实习。目前直投了阿里的提前批，后面至少要投华为，微软，阿里，字节这几家，所以一个合理的顺序是必要的。我准备是按照华为，阿里，字节的顺序投，不写微软是因为微软的面试内容只有算法，和其他的没什么关系，不构成攒经验的说法，然后在华为和阿里中间应该还要加几家一般的公司。期望的目标是，希望能在微软先做几个月，然后到明年的三月份再去字节或者阿里实习。这么考虑是因为微软的实习比较轻松也比较近，所以能够有比较长的时间带薪自习，去了解数据库相关内容的实现，Linux源码和计算机网络，再学习一下C++的知识，最好能够看到Azure内部的文档，学习一下他们分布式数据库的实现。最后，准备充分以后再去面试大厂的核心数据库部门，开启第二段实习，实习到九月份转正，十二月毕业就能直接入职。
+
+最后再聊一聊开源项目和GSoC。去年也说了，希望今年能够申请一个GSoC的项目，在给TinyKV提交过两个Pull Request以后，大概能了解到开源项目需要怎么样的贡献，另外，在学习分布式数据库的过程中也了解到很多的新技术，希望能把Proposal写得漂亮，详实一点，最好能申请到和数据库相关的工作。如果真的能够申请下来，那么这无疑是简历上的巨大两点。在开源项目方面，我非常看好PingCAP的前景。随着信息化程度加深，需要存储的数据指数级别增加，开源数据库必然是大势所趋，大厂有能力自己研发，小厂只能寻求开源的解决方案，MySQL的方案实在不够优雅，PingCAP的HTAP相当诱人。另外，我认为他们做Share-Nothing的结构也是出于小厂没有能力搭建分布式文件系统的考虑。如果能去PingCAP实习，也不失为一个好选择。
+
+回顾去年，最大的收获是发现了自己过去四年都在白混，如果能在本科四年确定要学的东西并且认真学下去，那我应该能找到一份不错的工作。但是现在也算是因祸得福，虽说也不知道算不算福气，走上了分布式数据库的道路，如果能在这条路上走下去，应该能成为核心团队的成员，35岁危机也小一些。现在，我总算是知道了要学什么——分布式数据库，怎么学——看国外公开课，做作业，参与开源，希望我能在这条路上好好走下去。
+
+最后的最后，祝我自己找到一份不错的实习，拿到GSoC的项目，学习未知的知识时能够融会贯通，走在历史的进程上。
+" />
+    <meta property="og:url" content="http://localhost:4000/%E6%88%91%E7%9A%842020" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/blog-cover.jpg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2021-02-13T18:00:00+08:00" />
+    <meta property="article:modified_time" content="2021-02-13T18:00:00+08:00" />
+    <meta property="article:tag" content="Essay" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="我的2020" />
+    <meta name="twitter:description" content="我的2020
+
+转眼又是农历新年，家家户户辞旧迎新。在年交之时，总结过去，展望未来，这是去年我给自己定下的目标。不过，去年有个漫长的暑假，于是又给自己的研究生生涯做了计划。这样一来，年更的总结反倒像是半年更的了。
+
+虽然说是2020年的年度总结，但说实话，我对毕业之前在学校待过的匆匆一月也没有太多印象。记得的事也不过是提交实习项目报告和毕业设计两件事。实习报告由于疫情直接变成了自选项目报告，拿了个以前写的Todo List当模板，写了下实现的思路就交上去了。毕业设计则相当地水，然后我在演示的时候竟然出现了Bug，幸好老师不追究，也就匆匆水过。但是那个Bug其实也就是一行代码的关系，事后稍作修改，也就过了。
+
+毕业之后是漫长的暑假。暑假的前一个月，我隔天交叉学习MIT6.824和SICP。6.824实在让我受益匪浅，作为分布式的课程实在是再合适不过。而SICP则似乎名不符实，知乎上盛赞其是程序员的内功，毫不吝啬溢美之词。然而，学完以后我只觉得这门课的价值并没有那么高。这门课中提及的模块化的抽象，黑盒以及流式计算等概念实在太过经典，以至于每一个计算机专业的学生都不可能没有听过，因此再花费一些时间去重新学习用Lisp怎么表达和处理这些概念实在有些浪费。正如在《MIT为何停掉SICP》中提到的“Sussman 指出，现代的软件工程师们的主要工作是为那些他们并不完全理解的复杂的硬件（由于商业机密的缘故，也不可能理解）而写代码。软件层面也存在同样的情况，编程环境是由无所不能的巨大的程序库构成”，SICP的所教授的知识更像是用来独立编写一个模块或者是开发整个软件所需要的知识，而现代分工过于细化和追求商业利益优先而进行的敏捷开发则与其背道而驰。不过，我依旧不能否认当我发现Lisp可以用两个操作写出自己解释器时的赞叹之情。
+
+九月份正式报到，算是开启了研究生生涯（虽然有点水）。流水账地回顾一下这半年的生活。九月份已经大致明确了将来要做的方向，要么分布式数据库，要么后台开发。因为6.824的余毒未清，所以九月份都在看一些额外的论文，Dynamo之类的。所以十月份主要在看CMU15-445的视频，给数据库打个底子并且写相关的课程作业。十一月份则是读《数据库系统概念》，再把MIT6.824的作业认认真真地做完。十二月读了交大出的《现代操作系统》，也读了一些RocksDB的源码。一月份的前一个星期和后一个星期在做TinyKV，而中间两个星期由于考试的缘故，在疯狂划水。
+
+这几个月的学习，也基本是让我决定了走上分布式数据库的道路。
+
+回忆起来，其实每个月的学习还算Solid，这些东西写简历上去找一个不那么好的实习也够用了。但是半年的时间实在是太紧了，分布式的基础理论刚刚入门，数据库的知识也仅仅是了解了个大纲，与这两者相关的计算机网络和操作系统都没有针对性地深入地了解。这些基础知识都只局限于408的范围，如果想要真正在这个方向走下去，必须要有能力修改底层的Linux源码或者自定义通信协议。
+
+不过，值得庆幸的是，我对于Raft算法已经有了一定的理解，至少所有关于Raft的问题，我都有信心答上来。另外，数据库的事务的隔离级别和实现，我也有一套可以自圆其说的理解。但是对于SQL Plan的生成，SQL的执行都还有从理论到实践的距离，毕竟14-445的实验实在算不上有工业级的质量。
+
+这里不妨结合我对分布式数据库的理解，做一个简单的知识梳理。分布式数据库有两大块的知识，分布式和数据库，其中分布式的通信涉及计算机网络，数据库的优化涉及操作系统，正如我上面说的，这两块知识是我必须补齐的。分布式数据库和单机的数据库区别在于两点，一：单机的数据库存储数据具有上限，所以必须将一张表的数据Split到两台机器，这一块负责的是拓展性，可以用Shard做到，二：由于大多数服务需要很强的可用性，所以分布式的数据库还需要提供备份的功能，这一块负责的是可用性，可以用Replica做到。在Shard时，我们要考虑单机数据库事务的ACID的要求，其中，Isolation和Atomic有别于单机数据库。其他的两个概念，Consistency本来就是不准确的概念，需要通过其他三个来保证，Duration和单机一样，都是用WAL来实现的。Atomic其实就是要求一个事务要么在所有机器上都执行，要么都不执行，一般使用2PC来解决这个问题。Isolation在单机中三种实现方案，2PL，TO和OCC，貌似被使用的只有2PL和OCC。这里也对应两种方案，Percolator使用2PL加2PC来解决A和I，Omid使用OCC加2PC来实现A和I。而Replica则比较简单，只需要在一个Group里执行Raft或者Paxos算法就可以了。另外，在读取完需要的数据以后还要执行的Join或者Count等操作就要设计分布式计算的内容，这一块实在不太了解。其他的数据库内容，比如底层使用以LSM Tree为结构的KV存储还是参照传统数据库使用Page的存储都可以视为单机的问题。
+
+最后一部分是对未来的展望和计划。
+
+首当其冲的是表达能力，这么多次面试下来，最大的感觉就是不能将自己学的东西表达出来，并不是不会，而是开始面试以后说话不会深思熟虑，只想更快地回答问题。自我反思以后感觉有两个问题，第一个是心态问题：其实说句自大的话，我自己应该至少是华为保底的，那么大可不必那么害怕失败，面试本质是一个技术交流的场景，在这个场景里不会的就说不会，会的就尽可能地吹起来，不应该有太多的心理负担；第二个是对知识的梳理不够清晰，简历的东西其实都在我自己的脑子里，无非是记得清楚不清楚的问题，但是只有把所有的东西都清楚的梳理一遍，才能在说出来的时候有条理，有自信。我想对于这两点的解决方案是预设一些问题，然后反复地练习怎么回答，最后才能达到想要的状态。
+
+先讲一讲离得近的计划——实习。目前直投了阿里的提前批，后面至少要投华为，微软，阿里，字节这几家，所以一个合理的顺序是必要的。我准备是按照华为，阿里，字节的顺序投，不写微软是因为微软的面试内容只有算法，和其他的没什么关系，不构成攒经验的说法，然后在华为和阿里中间应该还要加几家一般的公司。期望的目标是，希望能在微软先做几个月，然后到明年的三月份再去字节或者阿里实习。这么考虑是因为微软的实习比较轻松也比较近，所以能够有比较长的时间带薪自习，去了解数据库相关内容的实现，Linux源码和计算机网络，再学习一下C++的知识，最好能够看到Azure内部的文档，学习一下他们分布式数据库的实现。最后，准备充分以后再去面试大厂的核心数据库部门，开启第二段实习，实习到九月份转正，十二月毕业就能直接入职。
+
+最后再聊一聊开源项目和GSoC。去年也说了，希望今年能够申请一个GSoC的项目，在给TinyKV提交过两个Pull Request以后，大概能了解到开源项目需要怎么样的贡献，另外，在学习分布式数据库的过程中也了解到很多的新技术，希望能把Proposal写得漂亮，详实一点，最好能申请到和数据库相关的工作。如果真的能够申请下来，那么这无疑是简历上的巨大两点。在开源项目方面，我非常看好PingCAP的前景。随着信息化程度加深，需要存储的数据指数级别增加，开源数据库必然是大势所趋，大厂有能力自己研发，小厂只能寻求开源的解决方案，MySQL的方案实在不够优雅，PingCAP的HTAP相当诱人。另外，我认为他们做Share-Nothing的结构也是出于小厂没有能力搭建分布式文件系统的考虑。如果能去PingCAP实习，也不失为一个好选择。
+
+回顾去年，最大的收获是发现了自己过去四年都在白混，如果能在本科四年确定要学的东西并且认真学下去，那我应该能找到一份不错的工作。但是现在也算是因祸得福，虽说也不知道算不算福气，走上了分布式数据库的道路，如果能在这条路上走下去，应该能成为核心团队的成员，35岁危机也小一些。现在，我总算是知道了要学什么——分布式数据库，怎么学——看国外公开课，做作业，参与开源，希望我能在这条路上好好走下去。
+
+最后的最后，祝我自己找到一份不错的实习，拿到GSoC的项目，学习未知的知识时能够融会贯通，走在历史的进程上。
+" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/blog-cover.jpg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Essay" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%88%91%E7%9A%842020",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/blog-cover.jpg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%88%91%E7%9A%842020"
+    },
+    "description": "我的2020
+
+转眼又是农历新年，家家户户辞旧迎新。在年交之时，总结过去，展望未来，这是去年我给自己定下的目标。不过，去年有个漫长的暑假，于是又给自己的研究生生涯做了计划。这样一来，年更的总结反倒像是半年更的了。
+
+虽然说是2020年的年度总结，但说实话，我对毕业之前在学校待过的匆匆一月也没有太多印象。记得的事也不过是提交实习项目报告和毕业设计两件事。实习报告由于疫情直接变成了自选项目报告，拿了个以前写的Todo List当模板，写了下实现的思路就交上去了。毕业设计则相当地水，然后我在演示的时候竟然出现了Bug，幸好老师不追究，也就匆匆水过。但是那个Bug其实也就是一行代码的关系，事后稍作修改，也就过了。
+
+毕业之后是漫长的暑假。暑假的前一个月，我隔天交叉学习MIT6.824和SICP。6.824实在让我受益匪浅，作为分布式的课程实在是再合适不过。而SICP则似乎名不符实，知乎上盛赞其是程序员的内功，毫不吝啬溢美之词。然而，学完以后我只觉得这门课的价值并没有那么高。这门课中提及的模块化的抽象，黑盒以及流式计算等概念实在太过经典，以至于每一个计算机专业的学生都不可能没有听过，因此再花费一些时间去重新学习用Lisp怎么表达和处理这些概念实在有些浪费。正如在《MIT为何停掉SICP》中提到的“Sussman 指出，现代的软件工程师们的主要工作是为那些他们并不完全理解的复杂的硬件（由于商业机密的缘故，也不可能理解）而写代码。软件层面也存在同样的情况，编程环境是由无所不能的巨大的程序库构成”，SICP的所教授的知识更像是用来独立编写一个模块或者是开发整个软件所需要的知识，而现代分工过于细化和追求商业利益优先而进行的敏捷开发则与其背道而驰。不过，我依旧不能否认当我发现Lisp可以用两个操作写出自己解释器时的赞叹之情。
+
+九月份正式报到，算是开启了研究生生涯（虽然有点水）。流水账地回顾一下这半年的生活。九月份已经大致明确了将来要做的方向，要么分布式数据库，要么后台开发。因为6.824的余毒未清，所以九月份都在看一些额外的论文，Dynamo之类的。所以十月份主要在看CMU15-445的视频，给数据库打个底子并且写相关的课程作业。十一月份则是读《数据库系统概念》，再把MIT6.824的作业认认真真地做完。十二月读了交大出的《现代操作系统》，也读了一些RocksDB的源码。一月份的前一个星期和后一个星期在做TinyKV，而中间两个星期由于考试的缘故，在疯狂划水。
+
+这几个月的学习，也基本是让我决定了走上分布式数据库的道路。
+
+回忆起来，其实每个月的学习还算Solid，这些东西写简历上去找一个不那么好的实习也够用了。但是半年的时间实在是太紧了，分布式的基础理论刚刚入门，数据库的知识也仅仅是了解了个大纲，与这两者相关的计算机网络和操作系统都没有针对性地深入地了解。这些基础知识都只局限于408的范围，如果想要真正在这个方向走下去，必须要有能力修改底层的Linux源码或者自定义通信协议。
+
+不过，值得庆幸的是，我对于Raft算法已经有了一定的理解，至少所有关于Raft的问题，我都有信心答上来。另外，数据库的事务的隔离级别和实现，我也有一套可以自圆其说的理解。但是对于SQL Plan的生成，SQL的执行都还有从理论到实践的距离，毕竟14-445的实验实在算不上有工业级的质量。
+
+这里不妨结合我对分布式数据库的理解，做一个简单的知识梳理。分布式数据库有两大块的知识，分布式和数据库，其中分布式的通信涉及计算机网络，数据库的优化涉及操作系统，正如我上面说的，这两块知识是我必须补齐的。分布式数据库和单机的数据库区别在于两点，一：单机的数据库存储数据具有上限，所以必须将一张表的数据Split到两台机器，这一块负责的是拓展性，可以用Shard做到，二：由于大多数服务需要很强的可用性，所以分布式的数据库还需要提供备份的功能，这一块负责的是可用性，可以用Replica做到。在Shard时，我们要考虑单机数据库事务的ACID的要求，其中，Isolation和Atomic有别于单机数据库。其他的两个概念，Consistency本来就是不准确的概念，需要通过其他三个来保证，Duration和单机一样，都是用WAL来实现的。Atomic其实就是要求一个事务要么在所有机器上都执行，要么都不执行，一般使用2PC来解决这个问题。Isolation在单机中三种实现方案，2PL，TO和OCC，貌似被使用的只有2PL和OCC。这里也对应两种方案，Percolator使用2PL加2PC来解决A和I，Omid使用OCC加2PC来实现A和I。而Replica则比较简单，只需要在一个Group里执行Raft或者Paxos算法就可以了。另外，在读取完需要的数据以后还要执行的Join或者Count等操作就要设计分布式计算的内容，这一块实在不太了解。其他的数据库内容，比如底层使用以LSM Tree为结构的KV存储还是参照传统数据库使用Page的存储都可以视为单机的问题。
+
+最后一部分是对未来的展望和计划。
+
+首当其冲的是表达能力，这么多次面试下来，最大的感觉就是不能将自己学的东西表达出来，并不是不会，而是开始面试以后说话不会深思熟虑，只想更快地回答问题。自我反思以后感觉有两个问题，第一个是心态问题：其实说句自大的话，我自己应该至少是华为保底的，那么大可不必那么害怕失败，面试本质是一个技术交流的场景，在这个场景里不会的就说不会，会的就尽可能地吹起来，不应该有太多的心理负担；第二个是对知识的梳理不够清晰，简历的东西其实都在我自己的脑子里，无非是记得清楚不清楚的问题，但是只有把所有的东西都清楚的梳理一遍，才能在说出来的时候有条理，有自信。我想对于这两点的解决方案是预设一些问题，然后反复地练习怎么回答，最后才能达到想要的状态。
+
+先讲一讲离得近的计划——实习。目前直投了阿里的提前批，后面至少要投华为，微软，阿里，字节这几家，所以一个合理的顺序是必要的。我准备是按照华为，阿里，字节的顺序投，不写微软是因为微软的面试内容只有算法，和其他的没什么关系，不构成攒经验的说法，然后在华为和阿里中间应该还要加几家一般的公司。期望的目标是，希望能在微软先做几个月，然后到明年的三月份再去字节或者阿里实习。这么考虑是因为微软的实习比较轻松也比较近，所以能够有比较长的时间带薪自习，去了解数据库相关内容的实现，Linux源码和计算机网络，再学习一下C++的知识，最好能够看到Azure内部的文档，学习一下他们分布式数据库的实现。最后，准备充分以后再去面试大厂的核心数据库部门，开启第二段实习，实习到九月份转正，十二月毕业就能直接入职。
+
+最后再聊一聊开源项目和GSoC。去年也说了，希望今年能够申请一个GSoC的项目，在给TinyKV提交过两个Pull Request以后，大概能了解到开源项目需要怎么样的贡献，另外，在学习分布式数据库的过程中也了解到很多的新技术，希望能把Proposal写得漂亮，详实一点，最好能申请到和数据库相关的工作。如果真的能够申请下来，那么这无疑是简历上的巨大两点。在开源项目方面，我非常看好PingCAP的前景。随着信息化程度加深，需要存储的数据指数级别增加，开源数据库必然是大势所趋，大厂有能力自己研发，小厂只能寻求开源的解决方案，MySQL的方案实在不够优雅，PingCAP的HTAP相当诱人。另外，我认为他们做Share-Nothing的结构也是出于小厂没有能力搭建分布式文件系统的考虑。如果能去PingCAP实习，也不失为一个好选择。
+
+回顾去年，最大的收获是发现了自己过去四年都在白混，如果能在本科四年确定要学的东西并且认真学下去，那我应该能找到一份不错的工作。但是现在也算是因祸得福，虽说也不知道算不算福气，走上了分布式数据库的道路，如果能在这条路上走下去，应该能成为核心团队的成员，35岁危机也小一些。现在，我总算是知道了要学什么——分布式数据库，怎么学——看国外公开课，做作业，参与开源，希望我能在这条路上好好走下去。
+
+最后的最后，祝我自己找到一份不错的实习，拿到GSoC的项目，学习未知的知识时能够融会贯通，走在历史的进程上。
+"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="我的2020" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-essay post no-image">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="13 February 2021">13 February 2021</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/essay/'>ESSAY</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">我的2020</h1>
+            </header>
+
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <h1 id="我的2020">我的2020</h1>
+
+<p>转眼又是农历新年，家家户户辞旧迎新。在年交之时，总结过去，展望未来，这是去年我给自己定下的目标。不过，去年有个漫长的暑假，于是又给自己的研究生生涯做了计划。这样一来，年更的总结反倒像是半年更的了。</p>
+
+<p>虽然说是2020年的年度总结，但说实话，我对毕业之前在学校待过的匆匆一月也没有太多印象。记得的事也不过是提交实习项目报告和毕业设计两件事。实习报告由于疫情直接变成了自选项目报告，拿了个以前写的Todo List当模板，写了下实现的思路就交上去了。毕业设计则相当地水，然后我在演示的时候竟然出现了Bug，幸好老师不追究，也就匆匆水过。但是那个Bug其实也就是一行代码的关系，事后稍作修改，也就过了。</p>
+
+<p>毕业之后是漫长的暑假。暑假的前一个月，我隔天交叉学习MIT6.824和SICP。6.824实在让我受益匪浅，作为分布式的课程实在是再合适不过。而SICP则似乎名不符实，知乎上盛赞其是程序员的内功，毫不吝啬溢美之词。然而，学完以后我只觉得这门课的价值并没有那么高。这门课中提及的模块化的抽象，黑盒以及流式计算等概念实在太过经典，以至于每一个计算机专业的学生都不可能没有听过，因此再花费一些时间去重新学习用Lisp怎么表达和处理这些概念实在有些浪费。正如在<a href="https://segmentfault.com/a/1190000005064958">《MIT为何停掉SICP》</a>中提到的“Sussman 指出，现代的软件工程师们的主要工作是为那些他们并不完全理解的复杂的硬件（由于商业机密的缘故，也不可能理解）而写代码。软件层面也存在同样的情况，编程环境是由无所不能的巨大的程序库构成”，SICP的所教授的知识更像是用来独立编写一个模块或者是开发整个软件所需要的知识，而现代分工过于细化和追求商业利益优先而进行的敏捷开发则与其背道而驰。不过，我依旧不能否认当我发现Lisp可以用两个操作写出自己解释器时的赞叹之情。</p>
+
+<p>九月份正式报到，算是开启了研究生生涯（虽然有点水）。流水账地回顾一下这半年的生活。九月份已经大致明确了将来要做的方向，要么分布式数据库，要么后台开发。因为6.824的余毒未清，所以九月份都在看一些额外的论文，Dynamo之类的。所以十月份主要在看CMU15-445的视频，给数据库打个底子并且写相关的课程作业。十一月份则是读《数据库系统概念》，再把MIT6.824的作业认认真真地做完。十二月读了交大出的《现代操作系统》，也读了一些RocksDB的源码。一月份的前一个星期和后一个星期在做TinyKV，而中间两个星期由于考试的缘故，在疯狂划水。</p>
+
+<p>这几个月的学习，也基本是让我决定了走上分布式数据库的道路。</p>
+
+<p>回忆起来，其实每个月的学习还算Solid，这些东西写简历上去找一个不那么好的实习也够用了。但是半年的时间实在是太紧了，分布式的基础理论刚刚入门，数据库的知识也仅仅是了解了个大纲，与这两者相关的计算机网络和操作系统都没有针对性地深入地了解。这些基础知识都只局限于408的范围，如果想要真正在这个方向走下去，必须要有能力修改底层的Linux源码或者自定义通信协议。</p>
+
+<p>不过，值得庆幸的是，我对于Raft算法已经有了一定的理解，至少所有关于Raft的问题，我都有信心答上来。另外，数据库的事务的隔离级别和实现，我也有一套可以自圆其说的理解。但是对于SQL Plan的生成，SQL的执行都还有从理论到实践的距离，毕竟14-445的实验实在算不上有工业级的质量。</p>
+
+<p>这里不妨结合我对分布式数据库的理解，做一个简单的知识梳理。分布式数据库有两大块的知识，分布式和数据库，其中分布式的通信涉及计算机网络，数据库的优化涉及操作系统，正如我上面说的，这两块知识是我必须补齐的。分布式数据库和单机的数据库区别在于两点，一：单机的数据库存储数据具有上限，所以必须将一张表的数据Split到两台机器，这一块负责的是拓展性，可以用Shard做到，二：由于大多数服务需要很强的可用性，所以分布式的数据库还需要提供备份的功能，这一块负责的是可用性，可以用Replica做到。在Shard时，我们要考虑单机数据库事务的ACID的要求，其中，Isolation和Atomic有别于单机数据库。其他的两个概念，Consistency本来就是不准确的概念，需要通过其他三个来保证，Duration和单机一样，都是用WAL来实现的。Atomic其实就是要求一个事务要么在所有机器上都执行，要么都不执行，一般使用2PC来解决这个问题。Isolation在单机中三种实现方案，2PL，TO和OCC，貌似被使用的只有2PL和OCC。这里也对应两种方案，Percolator使用2PL加2PC来解决A和I，Omid使用OCC加2PC来实现A和I。而Replica则比较简单，只需要在一个Group里执行Raft或者Paxos算法就可以了。另外，在读取完需要的数据以后还要执行的Join或者Count等操作就要设计分布式计算的内容，这一块实在不太了解。其他的数据库内容，比如底层使用以LSM Tree为结构的KV存储还是参照传统数据库使用Page的存储都可以视为单机的问题。</p>
+
+<p>最后一部分是对未来的展望和计划。</p>
+
+<p>首当其冲的是表达能力，这么多次面试下来，最大的感觉就是不能将自己学的东西表达出来，并不是不会，而是开始面试以后说话不会深思熟虑，只想更快地回答问题。自我反思以后感觉有两个问题，第一个是心态问题：其实说句自大的话，我自己应该至少是华为保底的，那么大可不必那么害怕失败，面试本质是一个技术交流的场景，在这个场景里不会的就说不会，会的就尽可能地吹起来，不应该有太多的心理负担；第二个是对知识的梳理不够清晰，简历的东西其实都在我自己的脑子里，无非是记得清楚不清楚的问题，但是只有把所有的东西都清楚的梳理一遍，才能在说出来的时候有条理，有自信。我想对于这两点的解决方案是预设一些问题，然后反复地练习怎么回答，最后才能达到想要的状态。</p>
+
+<p>先讲一讲离得近的计划——实习。目前直投了阿里的提前批，后面至少要投华为，微软，阿里，字节这几家，所以一个合理的顺序是必要的。我准备是按照华为，阿里，字节的顺序投，不写微软是因为微软的面试内容只有算法，和其他的没什么关系，不构成攒经验的说法，然后在华为和阿里中间应该还要加几家一般的公司。期望的目标是，希望能在微软先做几个月，然后到明年的三月份再去字节或者阿里实习。这么考虑是因为微软的实习比较轻松也比较近，所以能够有比较长的时间带薪自习，去了解数据库相关内容的实现，Linux源码和计算机网络，再学习一下C++的知识，最好能够看到Azure内部的文档，学习一下他们分布式数据库的实现。最后，准备充分以后再去面试大厂的核心数据库部门，开启第二段实习，实习到九月份转正，十二月毕业就能直接入职。</p>
+
+<p>最后再聊一聊开源项目和GSoC。去年也说了，希望今年能够申请一个GSoC的项目，在给TinyKV提交过两个Pull Request以后，大概能了解到开源项目需要怎么样的贡献，另外，在学习分布式数据库的过程中也了解到很多的新技术，希望能把Proposal写得漂亮，详实一点，最好能申请到和数据库相关的工作。如果真的能够申请下来，那么这无疑是简历上的巨大两点。在开源项目方面，我非常看好PingCAP的前景。随着信息化程度加深，需要存储的数据指数级别增加，开源数据库必然是大势所趋，大厂有能力自己研发，小厂只能寻求开源的解决方案，MySQL的方案实在不够优雅，PingCAP的HTAP相当诱人。另外，我认为他们做Share-Nothing的结构也是出于小厂没有能力搭建分布式文件系统的考虑。如果能去PingCAP实习，也不失为一个好选择。</p>
+
+<p>回顾去年，最大的收获是发现了自己过去四年都在白混，如果能在本科四年确定要学的东西并且认真学下去，那我应该能找到一份不错的工作。但是现在也算是因祸得福，虽说也不知道算不算福气，走上了分布式数据库的道路，如果能在这条路上走下去，应该能成为核心团队的成员，35岁危机也小一些。现在，我总算是知道了要学什么——分布式数据库，怎么学——看国外公开课，做作业，参与开源，希望我能在这条路上好好走下去。</p>
+
+<p>最后的最后，祝我自己找到一份不错的实习，拿到GSoC的项目，学习未知的知识时能够融会贯通，走在历史的进程上。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/essay/">Essay</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D">写在研究生生活开始之前</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%88%91%E7%9A%842019">我的2019</a></li>
+                                        
+                                    
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/essay/">
+                                
+                                    See all 2 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">
+                <div class="post-card-image" style="background-image: url(/assets/images/consensus.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">共识性算法的发展</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">我的2020</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%88%91%E7%9A%842020&amp;url=https://jekyller.github.io/jasper2/%E6%88%91%E7%9A%842020"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%88%91%E7%9A%842020"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

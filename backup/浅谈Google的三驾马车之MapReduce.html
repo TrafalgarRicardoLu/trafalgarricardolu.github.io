@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>浅谈Google的三驾马车之MapReduce</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅谈Google的三驾马车之MapReduce" />
+    <meta property="og:description" content="上图为世界地图（World Map），实在找不到Reduce了。 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 MapReduce MapReduce本来是函数式编程中的两个函数，在尝试解决利用大数据进行计算时，Jeff Dean和Sanjay Ghemawat想到了使用这种思想简化计算模型。 基本思想 MapReduce把所有的计算都拆分成两个基本的计算操作，即Map和Reduce。其中Map函数以一系列键值对作为输入，然后输出一个中间文件（Intermediate）。这个中间态是另一种形式的键值对。然后，Reduce函数将这个中间态作为输入，计算得出结果。其中，Map函数和Reduce函数的逻辑都是由开发人员自行定义的。一种经典的逻辑如下图所示。 以WordCount为例，准备要统计一本书中所有单词出现的次数。在Map函数中，我们每遇到一个单词W，就往中间文件中写入（W，1）。然后，在Reduce函数中，把所有（W，1）出现的次数相加，就能得到W的出现次数V。 分布式MapReduce流程 上面提到的模型和思想都是单机的，想要在分布式系统中实现，还需要一些改动。在MapReduce中，他们选择将大任务拆分成小任务分配给多台机器，以此充分利用分布式系统的性能。下图是论文中展示的MapReduce的流程图。 具体的流程如下 MapReduce客户端会将输入的文件会分为M个片段，每个片段的大小通常在 16~64 MB 之间。然后在多个机器上开始运行MapReduce程序。 系统中会有一个机器被选为Master节点，整个 MapReduce 计算包含M个Map 任务和R个 Reduce 任务。Master节点会为空闲的 Worker节点分配Map任务和 Reduce 任务 执行Map任务的 Worker开始读入自己对应的片段并将读入的数据解析为输入键值对。然后调用由用户定义的 Map任务。最后，Worker会将Map任务输出的结果存在内存中。" />
+    <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/mapreduce.jpg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-08-13T18:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-08-13T18:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅谈Google的三驾马车之MapReduce" />
+    <meta name="twitter:description" content="上图为世界地图（World Map），实在找不到Reduce了。 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 MapReduce MapReduce本来是函数式编程中的两个函数，在尝试解决利用大数据进行计算时，Jeff Dean和Sanjay Ghemawat想到了使用这种思想简化计算模型。 基本思想 MapReduce把所有的计算都拆分成两个基本的计算操作，即Map和Reduce。其中Map函数以一系列键值对作为输入，然后输出一个中间文件（Intermediate）。这个中间态是另一种形式的键值对。然后，Reduce函数将这个中间态作为输入，计算得出结果。其中，Map函数和Reduce函数的逻辑都是由开发人员自行定义的。一种经典的逻辑如下图所示。 以WordCount为例，准备要统计一本书中所有单词出现的次数。在Map函数中，我们每遇到一个单词W，就往中间文件中写入（W，1）。然后，在Reduce函数中，把所有（W，1）出现的次数相加，就能得到W的出现次数V。 分布式MapReduce流程 上面提到的模型和思想都是单机的，想要在分布式系统中实现，还需要一些改动。在MapReduce中，他们选择将大任务拆分成小任务分配给多台机器，以此充分利用分布式系统的性能。下图是论文中展示的MapReduce的流程图。 具体的流程如下 MapReduce客户端会将输入的文件会分为M个片段，每个片段的大小通常在 16~64 MB 之间。然后在多个机器上开始运行MapReduce程序。 系统中会有一个机器被选为Master节点，整个 MapReduce 计算包含M个Map 任务和R个 Reduce 任务。Master节点会为空闲的 Worker节点分配Map任务和 Reduce 任务 执行Map任务的 Worker开始读入自己对应的片段并将读入的数据解析为输入键值对。然后调用由用户定义的 Map任务。最后，Worker会将Map任务输出的结果存在内存中。" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/mapreduce.jpg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/mapreduce.jpg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce"
+    },
+    "description": "上图为世界地图（World Map），实在找不到Reduce了。 谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。 背景介绍 在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。 MapReduce MapReduce本来是函数式编程中的两个函数，在尝试解决利用大数据进行计算时，Jeff Dean和Sanjay Ghemawat想到了使用这种思想简化计算模型。 基本思想 MapReduce把所有的计算都拆分成两个基本的计算操作，即Map和Reduce。其中Map函数以一系列键值对作为输入，然后输出一个中间文件（Intermediate）。这个中间态是另一种形式的键值对。然后，Reduce函数将这个中间态作为输入，计算得出结果。其中，Map函数和Reduce函数的逻辑都是由开发人员自行定义的。一种经典的逻辑如下图所示。 以WordCount为例，准备要统计一本书中所有单词出现的次数。在Map函数中，我们每遇到一个单词W，就往中间文件中写入（W，1）。然后，在Reduce函数中，把所有（W，1）出现的次数相加，就能得到W的出现次数V。 分布式MapReduce流程 上面提到的模型和思想都是单机的，想要在分布式系统中实现，还需要一些改动。在MapReduce中，他们选择将大任务拆分成小任务分配给多台机器，以此充分利用分布式系统的性能。下图是论文中展示的MapReduce的流程图。 具体的流程如下 MapReduce客户端会将输入的文件会分为M个片段，每个片段的大小通常在 16~64 MB 之间。然后在多个机器上开始运行MapReduce程序。 系统中会有一个机器被选为Master节点，整个 MapReduce 计算包含M个Map 任务和R个 Reduce 任务。Master节点会为空闲的 Worker节点分配Map任务和 Reduce 任务 执行Map任务的 Worker开始读入自己对应的片段并将读入的数据解析为输入键值对。然后调用由用户定义的 Map任务。最后，Worker会将Map任务输出的结果存在内存中。"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="浅谈Google的三驾马车之MapReduce" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="13 August 2020">13 August 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">浅谈Google的三驾马车之MapReduce</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/mapreduce.jpg)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>上图为世界地图（World Map），实在找不到Reduce了。</p>
+
+<p>谷歌在2003到2006年间发表了三篇论文，《MapReduce: Simplified Data Processing on Large Clusters》，《Bigtable: A Distributed Storage System for Structured Data》和《The Google File System》介绍了Google如何对大规模数据进行存储和分析。这三篇论文开启了工业界的大数据时代，被称为Google的三驾马车。本文介绍MapReduce的相关内容。</p>
+
+<h2 id="背景介绍">背景介绍</h2>
+
+<p>在21世纪初，互联网上的内容，大多数企业需要存储的数据量并不大。但是Google不同，Google的搜索引擎的数据基于爬虫，而由于网页的大量增加，爬虫得到的数据也随之急速膨胀，单机或简单的分布式方案已经不能满足业务的需求，所以Google必须设计新的数据存储系统，其产物就是Google File System（GFS）。不过，在Google的设计中，为了尽可能的解耦，GFS仅负责数据存储而不提供类似数据库的服务。也就是说，GFS只存数据，而对数据的具体内容一无所知，自然也就不能提供基于内容的检索功能。所以，更进一步，Google开发了Bigtable作为数据库，向上层服务提供基于内容的各种功能。此外，Google 的搜索结果依赖于PageRank算法的排序，而该算法又需要一些额外的数据，比如某网页的被引用次数，所以他们还开发了对于的数据处理工具MapReduce，在读取了Bigtable数据的技术上，根据业务需求，对数据内容进行运算。其总体架构如下，GFS能充分利用多个Linux服务器的磁盘，并向上掩盖分布式系统的细节。Bigtable在GFS的基础上对数据内容进行识别和存储，向上提供类似数据库的各种操作。MapReduce则使用Bigtable中的数据进行运算，再提供给具体的业务使用。</p>
+
+<p><img src="/assets/images/Google Troika.png" alt="Troika" /></p>
+
+<h2 id="mapreduce">MapReduce</h2>
+
+<p>MapReduce本来是函数式编程中的两个函数，在尝试解决利用大数据进行计算时，Jeff Dean和Sanjay Ghemawat想到了使用这种思想简化计算模型。</p>
+
+<h3 id="基本思想">基本思想</h3>
+
+<p>MapReduce把所有的计算都拆分成两个基本的计算操作，即Map和Reduce。其中Map函数以一系列键值对作为输入，然后输出一个中间文件（Intermediate）。这个中间态是另一种形式的键值对。然后，Reduce函数将这个中间态作为输入，计算得出结果。其中，Map函数和Reduce函数的逻辑都是由开发人员自行定义的。一种经典的逻辑如下图所示。</p>
+
+<p><img src="/assets/images/MapReduce Model.png" alt="MapReduce Model" /></p>
+
+<p>以WordCount为例，准备要统计一本书中所有单词出现的次数。在Map函数中，我们每遇到一个单词W，就往中间文件中写入（W，1）。然后，在Reduce函数中，把所有（W，1）出现的次数相加，就能得到W的出现次数V。</p>
+
+<h3 id="分布式mapreduce流程">分布式MapReduce流程</h3>
+
+<p>上面提到的模型和思想都是单机的，想要在分布式系统中实现，还需要一些改动。在MapReduce中，他们选择将大任务拆分成小任务分配给多台机器，以此充分利用分布式系统的性能。下图是论文中展示的MapReduce的流程图。</p>
+
+<p><img src="/assets/images/MapReduce Overview.png" alt="MapReduce Overview" /></p>
+
+<p>具体的流程如下</p>
+
+<blockquote>
+  <ol>
+    <li>MapReduce客户端会将输入的文件会分为M个片段，每个片段的大小通常在 16~64 MB 之间。然后在多个机器上开始运行MapReduce程序。</li>
+    <li>系统中会有一个机器被选为Master节点，整个 MapReduce 计算包含M个Map 任务和R个 Reduce 任务。Master节点会为空闲的 Worker节点分配Map任务和 Reduce 任务</li>
+    <li>执行Map任务的 Worker开始读入自己对应的片段并将读入的数据解析为输入键值对。然后调用由用户定义的 Map任务。最后，Worker会将Map任务输出的结果存在内存中。</li>
+    <li>在执行Map的同时，Map Worker根据Partition 函数将产生的中间结果分为R个部分，然后定期将内存中的中间文件存入到自己的本地磁盘中。任务完成时，Mapper 便会将中间文件在其本地磁盘上的存放位置报告给 Master。</li>
+    <li>Master会将中间文件存放位置通知给Reduce Work。Reduce Worker接收到这些信息后便会通过RPC读取中间文件。在读取完毕后，Reduce Worker会对读取到的数据进行排序，保证拥有相同键的键值对能够连续分布。</li>
+    <li>最后，Reduce Worker会为每个键收集与其关联的值的集合，并调用用户定义的Reduce 函数。Reduce 函数的结果会被放入到对应的结果文件。</li>
+    <li>当所有Map和Reduce都结束后，程序会换新客户端并返回结果。</li>
+  </ol>
+</blockquote>
+
+<p>整个流程非常清晰。首先，将输入文件分割成M个个片段，然后每个Map Worker读取对应的片段并执行Map函数，将结果存入中间文件。Reduce Work则通过Master得知中间文件的位置，然后读取其对应中间文件的内容并运行Reduce函数，最后把结果输出到结果文件中。</p>
+
+<p>这里值得说明的是，无论是输入文件到Map Worker的映射还是中间文件到Reduce Worker的映射都可以通过自定义的哈希函数来确定，论文中默认使用<strong>Hash(key) mod R</strong>来确定。另外，M和R的值都是由用户指定的，应当比实际的机器数量要多一些，以此实现均衡负载。</p>
+
+<h3 id="fault-tolerance">Fault-Tolerance</h3>
+
+<p>因为使用了分布式系统，所以不可避免地要考虑容错的问题，在MapReduce中，容错也考虑Master和Work两种情况。</p>
+
+<p>Master节点会定期地将当前运行状态存为快照，当Master节点崩溃，就从最近的快照恢复然后重新执行任务。</p>
+
+<p>Master节点会定期地Ping每个Work节点，一旦发现Work节点不可达，针对其当前执行的是Map还是Reduce任务，会有不同的策略。</p>
+
+<p>如果是Map任务，无论任务已完成或是未完成，都会废除当前节点的任务。。之后，Master会将任务重新分配给其他节点，同时由于已经生成的中间文件不可访问，还会通知还未拿到中间文件的Reduce Worker去新的节点拿数据。</p>
+
+<p>如果是Reduce任务，由于结果文件存在GFS中，文件的可用性和一致性由GFS保证，所以Master仅将未完成的任务重新分配。</p>
+
+<h3 id="优化">优化</h3>
+
+<p>如果集群中有某个 Worker 花了特别长的时间来完成最后的几个 Map 或 Reduce 任务，整个 MapReduce 计算任务的耗时就会因此被拖长，这样的 Worker 也就成了落后者。MapReduce 在整个计算完成到一定程度时就会将剩余的任务即同时将其分配给其他空闲 Worker 来执行，并在其中一个 Worker 完成后将该任务视作已完成。</p>
+
+<p>这里论文中还提出了其他一些策略，但是我认为不是十分重要也就不再提及。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>MapReduce是一个相当简单的计算模型，它尝试将所有的计算任务都拆分成基础的Map和Reduce，以此降低实现的复杂度。但是，这恰恰提高了编程逻辑的复杂度。我看过使用MapReduce实现Join功能的代码，十分地巧妙灵活。但是看似巧妙的背后，是模型过于简单而导致复杂度转移到了代码逻辑的层面。</p>
+
+<p>另一方面，MapReduce的程序类似于批处理程序，需要完整的输入程序才能开始运算，而且每次运算都要至少写入两次磁盘。这就导致每次运算都要等待很长的时间，完全不能实现需要快速响应的业务场景的需求。</p>
+
+<p>以上两个方面，一个引出了支持类SQL的计算工具，另一个引出了支持流式计算的工具，而这两个特性正是今天流行的计算工具的热点。</p>
+
+<p>总得来说，虽然MapReduce在今天几乎抛弃了，但是在当初那个年代以及谷歌的业务需求看来，是相当合适的。</p>
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%9B%9E%E9%A1%BEMIT6.824">回顾MIT 6.824</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6">
+                <div class="post-card-image" style="background-image: url(/assets/images/troika.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%80%BB%E7%BB%93Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">总结Google的三驾马车</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">
+                <div class="post-card-image" style="background-image: url(/assets/images/bigtable.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BBigtable">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Google的三驾马车之Bigtable</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">浅谈Google的三驾马车之MapReduce</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce&amp;url=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Google%E7%9A%84%E4%B8%89%E9%A9%BE%E9%A9%AC%E8%BD%A6%E4%B9%8BMapReduce"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>

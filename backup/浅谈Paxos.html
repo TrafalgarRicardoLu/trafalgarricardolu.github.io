@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>浅谈Paxos</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="The professional publishing platform" />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/%E6%B5%85%E8%B0%88Paxos" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Ghost" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="浅谈Paxos" />
+    <meta property="og:description" content="图为真·Paxos———位于希腊的岛屿 如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的" />
+    <meta property="og:url" content="http://localhost:4000/%E6%B5%85%E8%B0%88Paxos" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/paxos.jpg" />
+    <meta property="article:publisher" content="https://www.facebook.com/ghost" />
+    <meta property="article:author" content="https://www.facebook.com/ghost" />
+    <meta property="article:published_time" content="2020-07-13T04:00:00+08:00" />
+    <meta property="article:modified_time" content="2020-07-13T04:00:00+08:00" />
+    <meta property="article:tag" content="Distributedsystem" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="浅谈Paxos" />
+    <meta name="twitter:description" content="图为真·Paxos———位于希腊的岛屿 如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/paxos.jpg" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Ghost" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Distributedsystem" />
+    <meta name="twitter:site" content="@tryghost" />
+    <meta name="twitter:creator" content="@tryghost" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Ghost",
+        "logo": "http://localhost:4000/assets/images/blog-icon.png"
+    },
+    "url": "http://localhost:4000/%E6%B5%85%E8%B0%88Paxos",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/paxos.jpg",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/%E6%B5%85%E8%B0%88Paxos"
+    },
+    "description": "图为真·Paxos———位于希腊的岛屿 如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。 Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。 为什么需要Paxos 在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。 假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。 将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。 Basic Paxos 鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。 通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解） 安全性 每次提议仅有一个值被选定 服务器在值被接受前不会知道该值已被选定 活跃性 在一些提议中，最后必定有值会被选定 如果值被选定了，那么服务器最后总会知道该值 为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下 提议者（Proposer）:负责提出提议 接受者（Acceptor）:负责审阅提议并决定是否批准 学习者（Learner） :不参与议案过程仅学习通过的提案 考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0 P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen） 为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束： P1：Acceptor必须接受其收到的第一个Proposal 然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。 由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束： P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v 由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为 P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v 现在，我们假设一个新的"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="浅谈Paxos" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/"><img src="/assets/images/blog-icon.png" alt="Ghost" /></a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-getting-started" role="menuitem"><a href="/tag/essay/">Essay</a></li>
+    <li class="nav-home" role="menuitem"><a href="/tag/distributedsystem/">Distributed System</a></li>
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            
+                <a class="social-link social-link-fb" href="https://facebook.com/ghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+</a>
+            
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/tryghost" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        
+            <a class="subscribe-button" href="#subscribe">Subscribe</a>
+        
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full  tag-distributedsystem post ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime="13 July 2020">13 July 2020</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/distributedsystem/'>DISTRIBUTEDSYSTEM</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">浅谈Paxos</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/paxos.jpg)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <p>图为真·Paxos———位于希腊的岛屿</p>
+
+<p>如果想要在后端开发上更进一步而不是局限于SSM框架，那么分布式是一个不那么坏的发展方向。如果要研究分布式系统，Paxos算法是绝对绕不过，也不能绕过的知识点。</p>
+
+<p>Leslie Lamport在1998年在《The Part-Time Parliament》中提出了Paxos算法，单单从论文名字看也知道这是篇不怎么正经的论文，这一结论在看完论文后又得到了印证。作者在论文中虚构了一个叫做Paxos的希腊城邦，这个城邦以议会作为最高权利机构，每条法令都需要在此议会中通过后方可实施，作者又对其中的细节作了一些描述和规定，以此符合分布式系统的实际模型。但是，这篇寓言性质的论文对于母语中文的我来说实在过于难懂，哪怕参考了许多资料和解释以后，我仍然很难理解这种模型，就算是读了《Paxos Made Simple》，也很难将其与这个故事一一对应起来。所以，我决定跳过这篇论文，从《Paxos Made Simple》开始说起。</p>
+
+<h2 id="为什么需要paxos">为什么需要Paxos</h2>
+
+<p>在开始谈Paxos细节之前，我想有必要谈谈为什么我们需要Paxos。几乎所有的资料都在说Paxos是一种共识性（Consensus）算法那么什么是共识呢，共识性和一致性（Consistency）有什么差别，为什么我们需要共识呢？我希望通过下面的例子解决这个问题。</p>
+
+<p>假设我们开了家“肥宅”奶茶店，为了简化模型，店里只卖珍珠奶茶，我们的配方为奶茶之比为1:1。如果只有一家店，自然是我们说了算。但是有人看我们开得不错，提出要入伙一起干，也不管我们同不同意，总之我们现在有两家店了。作为商业机密，配方是不能透露的，这家店老板也没多想，配方就定了奶茶比为2:1。那么此时，分歧就出现了，也就是说，两家店没有在奶茶的配方上达成“共识”。在这种情况下，由于没有“共识”，消费者在两家“肥宅”奶茶店买到的奶茶竟然味道不同，这就产生了“一致性”的问题。</p>
+
+<p>将上述的奶茶店换成计算机，配方换成提议，奶茶换成数据，就变成了分布式系统的模型。在奶茶店模型中，消费者喝到味道不同的奶茶倒是小事，但是如果在银行系统中，一台机器上余额是一百万，一台是负一百万那问题就大了。而且，由于现在绝大多数业务都需要保证数据一致性，那么保证提议的共识性就显得格外重要了。</p>
+
+<h2 id="basic-paxos">Basic Paxos</h2>
+
+<p>鉴于有很多朋友也像我一样无法理解《The Part-Time Parliament》，作者在2001年又发了《Paxos Made Simple》重新解释Paxos算法。作者在这篇文章中，终于用能看得懂的英语解释了Paxos算法是怎么运作的。</p>
+
+<p>通读全文，我们可以知道Paxos有两个目标安全性（Safety）和活跃性（Liveness）。其期望分别如下（此处采用Raft作者的理解）</p>
+
+<blockquote>
+  <p>安全性</p>
+
+  <ul>
+    <li>每次提议仅有一个值被选定</li>
+    <li>服务器在值被接受前不会知道该值已被选定</li>
+  </ul>
+
+  <p>活跃性</p>
+
+  <ul>
+    <li>在一些提议中，最后必定有值会被选定</li>
+    <li>如果值被选定了，那么服务器最后总会知道该值</li>
+  </ul>
+</blockquote>
+
+<p>为了实现以上目标Paxos提出了两条约束，并通过数学证明：任何遵循这两条约束的系统都能保证共识性，此处我们仅讨论在文中作者如何推导出两条约束，不讨论数学上如何证明。该算法中，提议（Proposal）具有两个属性，编号（Number）和值（Value），算法中的规定的角色如下</p>
+
+<blockquote>
+  <p>提议者（Proposer）:负责提出提议</p>
+
+  <p>接受者（Acceptor）:负责审阅提议并决定是否批准</p>
+
+  <p>学习者（Learner）  :不参与议案过程仅学习通过的提案</p>
+</blockquote>
+
+<p>考虑最简单的情况，我们仅使用一台机器作为Acceptor且接受Number相同的第一个Proposal，那么所有的提议都会由它审阅，并且只会有一种结果，能够保证共识。但是一旦这台机器宕机，那么整个系统就无法继续运行。所以使用多个Acceptor是必要的。此时，仅当Proposal被大于一半的Acceptor接受，该Proposal才被视为通过。虽然在文中此条件没有被显式地列为约束，但我认为其重要程度与后两者相当，因此我将其列为P0</p>
+
+<blockquote>
+  <p>P0：当且仅当Proposal被大多数Acceptor接受（Accepted），该Proposal才被视为选定（Chosen）</p>
+</blockquote>
+
+<p>为了能保证Paxos 在一个Proposer和一个Acceptor的情况下工作，即符合活跃性的第一条要求，我们提出下面的方案作为约束：</p>
+
+<blockquote>
+  <p>P1：Acceptor必须接受其收到的第一个Proposal</p>
+</blockquote>
+
+<p>然而此约束存在一个问题，假如几个Proposal同时提出，且被分别发送发不同的Acceptor，每个Acceptor都接受一个Proposal，那么就会出现人均一票的情况，无法形成符合P0的情况，Paxos并未提出如何解决这一问题，而Raft使用随机等待的办法解决此问题。</p>
+
+<p>由P0的约束可知，需要大多数Acceptor接受提案，而P1则要求Acceptor接受其收到的第一个Proposal，那么这就要求每个Acceptor需要接受多个Proposal。这里，我们使用Proposal的Number作为区分。而为了保证被选中的Proposal具有相同的Value，我们提出以下约束：</p>
+
+<blockquote>
+  <p>P2：如果Number为n，Value为v的Proposal被选中，那么所有被选中且Number &gt; n的Proposal都具有Value v</p>
+</blockquote>
+
+<p>由于Proposal被选中意味着Proposal被大多数Acceptor接受，所以可以进一步约束为</p>
+
+<blockquote>
+  <p>P2a：如果Number为n，Value为v的Proposal被选中，那么所有被接受且Number &gt; n的Proposal都具有Value v</p>
+</blockquote>
+
+<p>现在，我们假设一个新的 Proposer 刚刚从崩溃中恢复或加入此系统,并且发送了一个带有不同 Value 且Number更高的Proposal。P1要求Acceptor接受这个 proposal，但是却违背了 P2a。为了处理这种情况，需要继续加强P2a，于是我们得到</p>
+
+<blockquote>
+  <p>P2b：如果一个Value为v的Proposal 被选中，那么之后每个 Proposer 提出的具有更大Number的Proposal都有Value v</p>
+</blockquote>
+
+<p>P2b通过强制要求新的Proposal的值中含有Value解决了上述的问题。而作者通过数学工具，证明以下约束能够满足P2b</p>
+
+<blockquote>
+  <p>P2c：对于任意的Value v和Number n，如果Value为v且Number为n的Proposal被提出，那么一定有多数Acceptor集合S满足：（a）S中不存在Acceptor已经接受任何Number小于n的Proposal，或者（b）S中的Acceptor所接受的Proposal中Number最高的具备Value v。</p>
+</blockquote>
+
+<p>文中根据P2c将整个流程划分为两段：准备（Prepare）和接受（Accept），但是主要是针对Proposer的，为了适应这个流程，进一步将P1约束如下</p>
+
+<blockquote>
+  <p>P1a：如果Acceptor没有在Prepare阶段回复过Number大于n的请求，那么在Accept阶段，它可以接受Number为n的Proposal</p>
+</blockquote>
+
+<p>在得到上述的两个约束后，我们就能够以此为依据，得到具体的算法流程。</p>
+
+<h3 id="2-phase-commit">2 Phase Commit</h3>
+
+<p>上文提到整个算法流程分为两个阶段，下面我们将介绍具体流程是怎么样的。</p>
+
+<p>阶段一为准备阶段，具体如下</p>
+
+<blockquote>
+  <ol>
+    <li>Proposer 选择一个Number n，然后向大多数Acceptor发送Number 为n的Prepare request。</li>
+    <li>如果一个Acceptor接收到Number为n的Prepare request，并且n大于任何它已经回复的Prepare request的Number，那么它将承诺不再接受任何Number 小于 n的proposal，并且回复已经接受的最大Number的 proposal。</li>
+  </ol>
+</blockquote>
+
+<p>阶段二为接受阶段，具体如下</p>
+
+<blockquote>
+  <ol>
+    <li>如果Proposer 接受了来自大多数Acceptor对它的Prepare request 的回 复，那么接下来它将给这些 Acceptor发送Number为n，Value为v的 Proposal作为Accept request。其中v是收到的回复中最大 Number 的Proposal的Value，或者如果回复中没有Proposal的话，就可以是它自己选的任意值。</li>
+    <li>如果 Acceptor 收到一个Number 为n的Accept request，如果它没有对Number 大于n的Prepare request进行过回复，那么就接受该Accept request。</li>
+  </ol>
+</blockquote>
+
+<p>Raft作者的这张图形象地展示了Paxos的整个流程</p>
+
+<p><img src="/assets/images/paxos.png" alt="Paxos" /></p>
+
+<h2 id="对paxos的一些思考">对Paxos的一些思考</h2>
+
+<p>上述内容本质是对《Paxos Made Simple》的翻译和复述，下面我想谈谈我对这个算法一些思考。</p>
+
+<p>我仍然用上文奶茶店的例子，共识指的是两者对同一奶茶的配方认可，一致是奶茶的味道相同。初始奶茶店希望分店和自己采用相同的配方，这个过程就是寻求共识，如果分店同意，那么他们就达成了共识，这一阶段对应于提出Proposal。得到配方后的分店按配方制作奶茶，就能得到和初始奶茶店一样的味道，就相当于保证了数据的一致性。如果采用复制状态机的方案，奶茶配方在计算机系统中就是指令，两台初始完全相同的机器，在以同样顺序执行相同的指令后，就会得到一致的数据。也就是说，只要保证各机器对执行指令和顺序的共识，那么我们就能保证数据的一致性。</p>
+
+<h3 id="为什么paxos需要p0">为什么Paxos需要P0？</h3>
+
+<p>这个约束有两个作用，一是在拥有2f+1台机器的系统中，它能够允许f台机器同时崩溃，而仍能正常处理请求。其次，我们来考虑有2f+1个机器，而我们仅需要f个机器接受请求，那么假如所有的请求和数据都由前f个机器处理，而后f+1个机器没有任何数据。此时，前f个机器崩溃了，那么，我们的系统中就没有任何的数据了。但是，假如是要求f+1个机器接受请求，那么任何两次请求都必然有至少一个机器接受了两次请求，也就是说，它存有全部的最新数据。使用数学归纳法可以得知，无论接受了多少次请求，f+1个机器中所有的存储的数据可以拼接成完整的全部数据，那么，即使f个机器崩溃了，也能保证数据的完整。</p>
+
+<p>总得来说，Quorum机制能保证在2f+1台机器中f台机器崩溃的情况下保证Paxos协议的正常运行和数据的完整性。</p>
+
+<h3 id="为什么basic-paxos只能处理single-decree">为什么Basic Paxos只能处理“Single Decree”？</h3>
+
+<p>我们可以看到，如果Proposal希望能被接受，那么他必须包含之前所有被接受过的Proposal的Value，这在实践中是不可能实现的。另外，由于Basic Paxos允许多个Proposer，那么每个Proposal的Number大概率是不一致的，在跨事件的情况下，不能根据自增的Number来判断是否多个Proposal是对一个事件的共识。最重要的是，恐怕作者这篇论文的目的也仅仅是为了解决单个事件的共识。</p>
+
+<p>以前看这篇的论文的时候，由于之前了解的都是有Leader的系统，Proposal的不同Number的代表对不同Value的共识，然后在读Paxos时也代入了这种想法，就不能很好理解Paxos算法，现在从这个角度来看就容易理解得多。同时也可以解释为什么P2a和P2b中要求大Number应包含小Number有的Value，因为此时并不是两个事件，而是对同一事件的修改。比如两次的Value分别是{x=1}和{x=1，y=2}，那么实际上后者只是对前者的补充而已。</p>
+
+<h3 id="为什么需要prepare阶段">为什么需要Prepare阶段?</h3>
+
+<p>Prepare阶段主要是为了实现Proposer的共识，这也是和有Leader系统非常不同的一点。</p>
+
+<p>假设三个Proposer有三个版本的Proposal，具体如下</p>
+
+<blockquote>
+  <p>Proposer1：{Number：1，Value：[X=1] }</p>
+
+  <p>Proposer2：{Number：2，Value：[X=1，y=2] }</p>
+
+  <p>Proposer3：{Number：3，Value：[X=1]，y=2，z=3] }</p>
+</blockquote>
+
+<p>如果Proposer3最先到达Acceptor，那么根据Prepare阶段的要求，由于Proposer1和Proposer2的Number小于Proposer3，他们会被一直拒绝直到其内容和Proposer3相同。如果Proposer3最迟到达Acceptor，那么Proposer1和Proposer会在Acceptor阶段被拒绝。这里我们假设了Proposer3的Proposal是被选定的情况，如果它不是最终版本，那么，很有可能会出现Value中继续添加值的情况，然后Proposer3也会在第Accept阶段被拒绝，要求它重新提案。</p>
+
+<p>总之，由于Basic Paxos允许多个Proposer存在，所以需要Prepare阶段保证提案的一致性。</p>
+
+<h3 id="为什么我们不使用basic-paxos">为什么我们不使用Basic Paxos？</h3>
+
+<p>由于Basic Paxos需要Prepare阶段保证提案的一致性，而且一次算法的运行只能允许完成单次操作，所以如果直接使用Basic Paxos在性能上很可能会达不到我们的要求。因此，学界提出了更加符合实际的Multi-Paxos，使用Basic Paxos选举Leader，让Leader直接提案代替Prepare阶段，从而大大缩短了一次算法运行需要的时间。</p>
+
+
+                </div>
+            </section>
+
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/trl.png" alt="TrafalgarRicardoLu" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/TrafalgarRicardoLu">Trafalgar Ricardo Lu</a></h4>
+                                
+                                    <p>Stay foolish,stay sated.</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/TrafalgarRicardoLu">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Ghost &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/distributedsystem/">Distributedsystem</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/Paxos%E7%AE%97%E6%B3%95%E7%9A%84%E5%8F%91%E5%B1%95">共识性算法的发展</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E5%9B%9E%E9%A1%BEMIT6.824">回顾MIT 6.824</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/%E6%B5%85%E8%B0%88Memcache">浅谈Memcache</a></li>
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                    
+                                  
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/distributedsystem/">
+                                
+                                    See all 11 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/%E8%B0%88%E8%B0%88Raft">
+                <div class="post-card-image" style="background-image: url(/assets/images/raft.jpg)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E8%B0%88%E8%B0%88Raft">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Distributedsystem</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">浅谈Raft</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template no-image">
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/%E5%86%99%E5%9C%A8%E7%A0%94%E7%A9%B6%E7%94%9F%E7%94%9F%E6%B4%BB%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Essay</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">写在研究生生活开始之前</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/trl.png" alt="Trafalgar Ricardo Lu" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/TrafalgarRicardoLu/">Trafalgar Ricardo Lu</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Ghost icon" />
+            
+            <span>Ghost</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">浅谈Paxos</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=%E6%B5%85%E8%B0%88Paxos&amp;url=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Paxos"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/%E6%B5%85%E8%B0%88Paxos"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Ghost</a> &copy; 2021</section>
+                <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section>
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    <a href="https://facebook.com/ghost" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://twitter.com/tryghost" target="_blank" rel="noopener">Twitter</a>
+                    <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a>
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+        <div id="subscribe" class="subscribe-overlay">
+            <a class="subscribe-overlay-close" href="#"></a>
+            <div class="subscribe-overlay-content">
+                
+                    <img class="subscribe-overlay-logo" src="/assets/images/blog-icon.png" alt="Ghost" />
+                
+                <h1 class="subscribe-overlay-title">Subscribe to Ghost</h1>
+                <p class="subscribe-overlay-description">Stay up to date! Get all the latest &amp; greatest posts delivered straight to your inbox</p>
+                <form method="post" action="/subscribe/" class="">
+    <input class="confirm" type="hidden" name="confirm"  /><input class="location" type="hidden" name="location"  /><input class="referrer" type="hidden" name="referrer"  />
+
+    <div class="form-group">
+        <input class="subscribe-email" type="email" name="email"  placeholder="youremail@example.com" />
+    </div>
+    <button class="" type="submit" disabled><span>Subscribe</span></button>
+    <script type="text/javascript">(function(g,h,o,s,t){h[o]('.location')[s]=h[o]('.location')[s] || g.location.href;h[o]('.referrer')[s]=h[o]('.referrer')[s] || h.referrer;})(window,document,'querySelector','value');</script>
+</form>
+
+            </div>
+        </div>
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-69281367-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>
