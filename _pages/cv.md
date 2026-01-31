@@ -5,43 +5,24 @@ permalink: /
 author_profile: true
 redirect_from:
   - /resume
+  - /cv
 ---
 
 {% include base_path %}
 
 ## About Me
 
-I am a software engineer with a strong background in distributed systems and database technologies. Currently pursuing a Master's degree in Software Engineering at the University of Science and Technology of China, I have hands-on experience in developing and optimizing distributed storage systems, database internals, and big data processing frameworks. My professional journey includes internships at PingCAP and ByteDance, where I contributed to TiDB ecosystem projects and block storage systems. I also participated in Google Summer of Code, working on PostgreSQL extensions. With a solid foundation in computer science from Hangzhou Dianzi University, I am passionate about building reliable, efficient, and scalable software systems.
+I am a software engineer focus on distributed storage systems. Currently, I am working at ByteDance HDFS team, where I focus on developing and optimizing distributed storage systems serving very large-scale machine learning and analytics .
 
-Education
-======
-* 2020.9-2024.6 M.S. University of Science and Technology of China, Software Engineering
-* 2016.9-2020.6 B.S. Hangzhou Dianzi University, Computer Science and Technology
+Previously,I received my Master's degree in Software Engineering from the University of Science and Technology of China (USTC) in 2023 and Bachelor's degree in Computer Science and Technology from Hangzhou Dianzi University (HDU) in 2020. I have internship experience at [PingCAP TiSpark](https://github.com/pingcap/tispark) and ByteDance (Block Storage) during 2021 - 2022. I also participated in [Google Summer of Code 2021(GSoC)](https://summerofcode.withgoogle.com/archive/2021/projects/6453137933598720), working on PostgreSQL-pg_systat extensions to add various monitoring panels.
 
-Work experience
+I enjoy working on distributed systems and database technologies, with a passion for building reliable, efficient, and scalable software systems.
+
+Experience
 ======
+* Distributed Storage System Intern ByteDance 2023.6 – Now
+
+
 * TiDB Ecosystem Intern PingCAP 2022.5 – 2022.8
-  * Supported TiSpark to insert data using Insert SQL. PR2471
-  * Added permission validation to TiSpark's DataSource API. PR2366
-  * Reproduced, diagnosed and fixed a bug that could cause data loss. PR2433
-
 * Block Storage Intern ByteDance 2021.8 – 2022.3
-  * Completed the design of Exactly-Once semantics based on existing theory in the original architecture
-  * Participated in developing Extent CRC validation, improved end-to-end CRC checking, and provided rich debugging information
-  * Coordinated externally to decommission three old version clusters, reducing maintenance costs
-
 * PostgreSQL-pg_systat Google Summer of Code 2021.6 – 2021.8
-  * Added pg_stat_statements, pg_stat_progress_cope, and pg_buffercache panels
-  * Increased database version and extension installation status checks, backward compatibility, and reduced unnecessary queries
-
-Related Experience
-======
-* TinyKV TiDB Talent Project
-  * Implemented the Raft algorithm for synchronizing server-side data
-  * Implemented support for adding/removing nodes, splitting regions, and load balancing
-  * Implemented distributed transactions based on MVCC and Percolator algorithms
-
-* CMU15-445 Course Projects
-  * Implemented Buffer Pool replacement using Clock algorithm
-  * Implemented database index based on Hashtable
-  * Implemented ARISE algorithm for database crash recovery
