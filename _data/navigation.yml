@@ -9,10 +9,10 @@
 
 main:
   - title: "About Me"
-    url: /about-me/
+    url: /
     
   - title: "Blog Posts"
     url: /blog/
  
-  - title: "Portfolio"
-    url: /portfolio/
+  # - title: "Portfolio"
+  #   url: /portfolio/
