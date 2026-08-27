@@ -121,8 +121,53 @@
 }
 
 .work-grid,
-.post-list {
+.post-list,
+.experience-list {
   grid-column: 2;
+}
+
+.experience-list {
+  display: grid;
+  gap: 0;
+}
+
+.experience-item {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.55fr) minmax(0, 1.45fr);
+  gap: 2rem;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--personal-border);
+}
+
+.experience-item:first-child {
+  padding-top: 0;
+}
+
+.experience-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.experience-meta strong {
+  font-size: 0.98rem;
+}
+
+.experience-meta span {
+  color: var(--personal-muted);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.experience-detail h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+.experience-detail p {
+  margin: 0;
+  line-height: 1.65;
+  color: #4b5563;
 }
 
 .work-grid {
@@ -224,8 +269,14 @@
 
   .work-grid,
   .post-list,
+  .experience-list,
   .section-link {
     grid-column: 1;
+  }
+
+  .experience-item {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
   }
 }
 
@@ -240,7 +291,8 @@
 
   .hero-lead,
   .page-intro,
-  .work-card p {
+  .work-card p,
+  .experience-detail p {
     color: #c7cbd1;
   }
 
