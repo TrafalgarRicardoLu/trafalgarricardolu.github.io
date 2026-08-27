@@ -4,8 +4,6 @@ main:
     url: /#about
   - title: "Experience"
     url: /#experience
-  - title: "Work"
-    url: /#work
   - title: "Writing"
     url: /blog/
   - title: "GitHub"
