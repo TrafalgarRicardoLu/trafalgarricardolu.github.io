@@ -1,0 +1,74 @@
+---
+layout: default
+title: "Jianhui Lu"
+permalink: /
+author_profile: false
+---
+
+<div class="personal-home">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Software Engineer · Distributed Systems · Storage</p>
+      <h1>Jianhui Lu</h1>
+      <p class="hero-lead">I build high-performance storage and infrastructure systems, and write about distributed systems, Linux, storage, and the engineering ideas behind them.</p>
+      <div class="hero-links">
+        <a class="button-primary" href="/about/">About me</a>
+        <a class="button-secondary" href="/blog/">Read my writing</a>
+        <a class="button-secondary" href="https://github.com/TrafalgarRicardoLu">GitHub</a>
+      </div>
+    </div>
+    <img class="hero-avatar" src="/images/profile.png" alt="Jianhui Lu" />
+  </section>
+
+  <section class="home-section">
+    <div class="section-heading">
+      <p class="eyebrow">About</p>
+      <h2>Building systems from first principles.</h2>
+    </div>
+    <div class="section-copy">
+      <p>I am a software engineer focused on distributed storage and systems infrastructure. My work sits close to Linux, networking, concurrency, and large-scale data systems.</p>
+      <p>I enjoy understanding why a system is designed the way it is—not only how to use it—and turning that understanding into practical engineering decisions.</p>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <div class="section-heading">
+      <p class="eyebrow">Selected work</p>
+      <h2>What I work on.</h2>
+    </div>
+    <div class="work-grid">
+      <article class="work-card">
+        <h3>Distributed Storage</h3>
+        <p>Storage architecture, metadata and data paths, caching, consistency, failure handling, and performance engineering.</p>
+        <div class="tag-row"><span>Storage</span><span>C++</span><span>Linux</span></div>
+      </article>
+      <article class="work-card">
+        <h3>AI Infrastructure</h3>
+        <p>Storage systems for AI workloads, high-throughput data access, cache design, and infrastructure close to GPU clusters.</p>
+        <div class="tag-row"><span>AI Infra</span><span>Cache</span><span>IO</span></div>
+      </article>
+      <article class="work-card">
+        <h3>Systems Engineering</h3>
+        <p>Performance analysis, concurrency, RPC, Linux I/O, RDMA, NVMe, and the engineering details behind reliable systems.</p>
+        <div class="tag-row"><span>Systems</span><span>Performance</span><span>Networking</span></div>
+      </article>
+    </div>
+    <p class="section-link"><a href="/work/">View work →</a></p>
+  </section>
+
+  <section class="home-section writing-preview">
+    <div class="section-heading">
+      <p class="eyebrow">Writing</p>
+      <h2>Notes, essays, and technical deep dives.</h2>
+    </div>
+    <div class="post-list">
+      {% for post in site.posts limit:5 %}
+      <a class="post-row" href="{{ post.url }}">
+        <span class="post-title">{{ post.title }}</span>
+        <span class="post-date">{{ post.date | date: "%Y.%m.%d" }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="section-link"><a href="/blog/">All writing →</a></p>
+  </section>
+</div>
