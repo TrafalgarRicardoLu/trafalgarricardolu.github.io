@@ -1,0 +1,72 @@
+---
+layout: default
+title: "Writing"
+permalink: /legacy/
+author_profile: false
+---
+
+<article class="legacy-page">
+  <p class="legacy-back"><a href="/blog/">← Writing</a></p>
+  <header class="legacy-header">
+    <h1 id="legacy-title">Loading…</h1>
+    <p id="legacy-date" class="legacy-date"></p>
+  </header>
+  <div id="legacy-content" class="legacy-content"></div>
+</article>
+
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get('src');
+  const titleEl = document.getElementById('legacy-title');
+  const dateEl = document.getElementById('legacy-date');
+  const contentEl = document.getElementById('legacy-content');
+
+  if (!src || !/^[^/\\]+\.html$/.test(src) || src.includes('..')) {
+    titleEl.textContent = 'Article not found';
+    return;
+  }
+
+  fetch('/backup/' + encodeURIComponent(src))
+    .then(function (response) {
+      if (!response.ok) throw new Error('not found');
+      return response.text();
+    })
+    .then(function (html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const oldTitle = doc.querySelector('.post-full-title');
+      const oldDate = doc.querySelector('.post-full-meta-date');
+      const oldContent = doc.querySelector('.kg-card-markdown');
+
+      if (!oldContent) throw new Error('content not found');
+
+      const title = oldTitle ? oldTitle.textContent.trim() : src.replace(/\.html$/, '');
+      titleEl.textContent = title;
+      document.title = title + ' - Jianhui Lu';
+      if (oldDate) dateEl.textContent = oldDate.textContent.trim();
+
+      const firstHeading = oldContent.querySelector('h1');
+      if (firstHeading && firstHeading.textContent.trim() === title) firstHeading.remove();
+
+      oldContent.querySelectorAll('img').forEach(function (img) {
+        const value = img.getAttribute('src');
+        if (value && value.indexOf('/assets/images/') === 0) {
+          img.setAttribute('src', '/backup' + value);
+        }
+      });
+
+      oldContent.querySelectorAll('source').forEach(function (source) {
+        const value = source.getAttribute('srcset');
+        if (value && value.indexOf('/assets/images/') === 0) {
+          source.setAttribute('srcset', '/backup' + value);
+        }
+      });
+
+      contentEl.innerHTML = oldContent.innerHTML;
+    })
+    .catch(function () {
+      titleEl.textContent = 'Article not found';
+      contentEl.innerHTML = '<p>The archived article could not be loaded.</p>';
+    });
+})();
+</script>
