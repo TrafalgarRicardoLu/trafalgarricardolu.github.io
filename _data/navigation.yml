@@ -1,7 +1,5 @@
 # Main navigation
 main:
-  - title: "Experience"
-    url: /#experience
   - title: "Writing"
     url: /blog/
   - title: "GitHub"
