@@ -171,6 +171,85 @@
   letter-spacing: -0.025em;
 }
 
+.writing-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4rem 1.25rem 6rem;
+  color: var(--personal-text);
+}
+
+.writing-page h1 {
+  margin: 0 0 2rem;
+  font-size: 2.5rem;
+  letter-spacing: -0.04em;
+}
+
+.legacy-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem 6rem;
+  color: var(--personal-text);
+}
+
+.legacy-back {
+  margin: 0 0 2.5rem;
+}
+
+.legacy-back a {
+  text-decoration: none;
+  font-weight: 650;
+}
+
+.legacy-header {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--personal-border);
+}
+
+.legacy-header h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.legacy-date {
+  margin: 0;
+  color: var(--personal-muted);
+  font-size: 0.92rem;
+}
+
+.legacy-content {
+  font-size: 1.02rem;
+  line-height: 1.8;
+}
+
+.legacy-content h2,
+.legacy-content h3,
+.legacy-content h4 {
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+  line-height: 1.3;
+}
+
+.legacy-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.8rem auto;
+}
+
+.legacy-content blockquote {
+  margin: 1.5rem 0;
+  padding-left: 1.2rem;
+  border-left: 3px solid var(--personal-border);
+  color: #4b5563;
+}
+
+.legacy-content pre {
+  overflow-x: auto;
+}
+
 @media (max-width: 760px) {
   .personal-home {
     padding-top: 1rem;
@@ -196,6 +275,11 @@
     grid-template-columns: 1fr;
     gap: 0.65rem;
   }
+
+  .writing-page,
+  .legacy-page {
+    padding-top: 2.5rem;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -209,7 +293,8 @@
 
   .hero-lead,
   .hero-bio,
-  .experience-detail p {
+  .experience-detail p,
+  .legacy-content blockquote {
     color: #c7cbd1;
   }
 }
