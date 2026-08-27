@@ -1,7 +1,5 @@
 # Main navigation
 main:
-  - title: "About"
-    url: /#about
   - title: "Experience"
     url: /#experience
   - title: "Writing"
