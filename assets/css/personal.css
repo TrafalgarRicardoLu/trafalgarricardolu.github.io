@@ -41,19 +41,19 @@
 }
 
 .hero-lead,
-.page-intro {
-  max-width: 760px;
-  font-size: clamp(1.15rem, 2vw, 1.45rem);
-  line-height: 1.65;
-  color: #3f4650;
-}
-
 .hero-bio {
   max-width: 760px;
-  margin-top: 1.25rem;
   font-size: 1.02rem;
   line-height: 1.75;
   color: #4b5563;
+}
+
+.hero-lead {
+  margin-bottom: 0.75rem;
+}
+
+.hero-bio {
+  margin-top: 0;
 }
 
 .hero-bio p {
@@ -75,40 +75,6 @@
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--personal-border);
-}
-
-.hero-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-  margin-top: 2rem;
-}
-
-.button-primary,
-.button-secondary {
-  display: inline-block;
-  padding: 0.72rem 1rem;
-  border-radius: 999px;
-  font-size: 0.92rem;
-  font-weight: 650;
-  text-decoration: none !important;
-  transition: transform 120ms ease, opacity 120ms ease;
-}
-
-.button-primary:hover,
-.button-secondary:hover {
-  transform: translateY(-1px);
-}
-
-.button-primary {
-  background: var(--personal-accent);
-  color: white !important;
-}
-
-.button-secondary {
-  color: var(--personal-text) !important;
-  border: 1px solid var(--personal-border);
-  background: white;
 }
 
 .simple-section {
@@ -239,17 +205,8 @@
   }
 
   .hero-lead,
-  .page-intro,
   .hero-bio,
   .experience-detail p {
     color: #c7cbd1;
-  }
-
-  .button-secondary {
-    background: transparent;
-  }
-
-  .button-primary {
-    color: #111827 !important;
   }
 }
