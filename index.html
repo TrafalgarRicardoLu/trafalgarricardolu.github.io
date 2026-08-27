@@ -71,12 +71,23 @@ author_profile: false
   <section class="simple-section writing-preview" id="writing">
     <h2>Writing</h2>
     <div class="post-list">
+      {% assign shown = 0 %}
       {% for post in site.posts limit:5 %}
       <a class="post-row" href="{{ post.url }}">
         <span class="post-title">{{ post.title }}</span>
         <span class="post-date">{{ post.date | date: "%Y.%m.%d" }}</span>
       </a>
+      {% assign shown = shown | plus: 1 %}
       {% endfor %}
+      {% assign remaining = 5 | minus: shown %}
+      {% if remaining > 0 %}
+        {% for post in site.data.legacy_posts limit:remaining %}
+        <a class="post-row" href="/legacy/?src={{ post.file | url_encode }}">
+          <span class="post-title">{{ post.title }}</span>
+          <span class="post-date">{{ post.date | date: "%Y.%m.%d" }}</span>
+        </a>
+        {% endfor %}
+      {% endif %}
     </div>
     <p class="simple-section-link"><a href="/blog/">All writing →</a></p>
   </section>
