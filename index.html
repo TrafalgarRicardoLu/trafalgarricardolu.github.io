@@ -10,7 +10,11 @@ author_profile: false
     <div class="hero-copy">
       <p class="eyebrow">Software Engineer · Distributed Systems · Storage</p>
       <h1>Jianhui Lu</h1>
-      <p class="hero-lead">I work on distributed storage and systems infrastructure, with a focus on building reliable and efficient systems for large-scale data and compute workloads.</p>
+      <p class="hero-lead">I am a software engineer focused on distributed storage and systems infrastructure, with an interest in building reliable and efficient systems for large-scale data and compute workloads.</p>
+      <div class="hero-bio">
+        <p>My interests include storage systems, Linux, databases, networking, concurrency, high-performance I/O, and AI infrastructure.</p>
+        <p>I received my Master's degree in Software Engineering from the University of Science and Technology of China (USTC) in 2023 and my Bachelor's degree in Computer Science and Technology from Hangzhou Dianzi University (HDU) in 2020.</p>
+      </div>
       <div class="hero-links">
         <a class="button-primary" href="https://github.com/TrafalgarRicardoLu">GitHub</a>
         <a class="button-secondary" href="/blog/">Writing</a>
@@ -19,22 +23,8 @@ author_profile: false
     <img class="hero-avatar" src="/images/profile.png" alt="Jianhui Lu" />
   </section>
 
-  <section class="home-section" id="about">
-    <div class="section-heading">
-      <p class="eyebrow">About</p>
-      <h2>A little about me.</h2>
-    </div>
-    <div class="section-copy">
-      <p>I am a software engineer focused on distributed storage systems. My interests are close to storage, Linux, databases, networking, concurrency, high-performance I/O, and AI infrastructure.</p>
-      <p>I received my Master's degree in Software Engineering from the University of Science and Technology of China (USTC) in 2023 and my Bachelor's degree in Computer Science and Technology from Hangzhou Dianzi University (HDU) in 2020.</p>
-    </div>
-  </section>
-
-  <section class="home-section" id="experience">
-    <div class="section-heading">
-      <p class="eyebrow">Experience</p>
-      <h2>Where I have worked.</h2>
-    </div>
+  <section class="simple-section" id="experience">
+    <h2>Experience</h2>
     <div class="experience-list">
       <div class="experience-item">
         <div class="experience-meta">
@@ -82,11 +72,8 @@ author_profile: false
     </div>
   </section>
 
-  <section class="home-section writing-preview" id="writing">
-    <div class="section-heading">
-      <p class="eyebrow">Writing</p>
-      <h2>Notes and technical deep dives.</h2>
-    </div>
+  <section class="simple-section writing-preview" id="writing">
+    <h2>Writing</h2>
     <div class="post-list">
       {% for post in site.posts limit:5 %}
       <a class="post-row" href="{{ post.url }}">
@@ -95,6 +82,6 @@ author_profile: false
       </a>
       {% endfor %}
     </div>
-    <p class="section-link"><a href="/blog/">All writing →</a></p>
+    <p class="simple-section-link"><a href="/blog/">All writing →</a></p>
   </section>
 </div>
