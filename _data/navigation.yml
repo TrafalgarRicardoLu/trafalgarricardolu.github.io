@@ -1,6 +1,4 @@
 # Main navigation
 main:
-  - title: "Publications"
-    url: /publications/
   - title: "Writing"
     url: /blog/

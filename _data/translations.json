@@ -352,10 +352,6 @@
     "zh": "站点地图"
   },
   {
-    "en": "Your Name, Powered by",
-    "zh": "Your Name，基于"
-  },
-  {
     "en": ", a fork of",
     "zh": "，源自"
   },
@@ -450,5 +446,9 @@
   {
     "en": "Looking Back at MIT 6.824",
     "zh": "回顾MIT6.824"
+  },
+  {
+    "en": "Jianhui Lu on LinkedIn",
+    "zh": "访问 Jianhui Lu 的领英主页"
   }
 ]
