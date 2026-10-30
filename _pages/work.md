@@ -11,11 +11,11 @@ author_profile: false
 
 ## Selected publication
 
-**[SOLO: Making Single-Local-Replica Storage Practical for Geo-Distributed Recommendation Model Training](/publications/#solo)**
+**[SOLO: Making Single-Local-Replica Storage Practical for Geo-Distributed Recommendation Model Training](/#publications)**
 
 Co-author · Accepted at ACM SIGOPS ATC 2026.
 
-Joint work with collaborators at USTC and ByteDance on single-local-replica storage for geo-distributed recommendation model training. [Full author list and conference links](/publications/#solo).
+Joint work with collaborators at USTC and ByteDance on single-local-replica storage for geo-distributed recommendation model training.
 
 ## Distributed Storage
 

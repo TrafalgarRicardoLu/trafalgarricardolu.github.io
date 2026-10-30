@@ -19,7 +19,7 @@ I enjoy working on distributed systems and database technologies, with a passion
 
 Publications
 ======
-* **[SOLO: Making Single-Local-Replica Storage Practical for Geo-Distributed Recommendation Model Training](/publications/#solo)** — Co-author. Accepted at the ACM SIGOPS Annual Technical Conference (ATC 2026).
+* **[SOLO: Making Single-Local-Replica Storage Practical for Geo-Distributed Recommendation Model Training](/#publications)** — Co-author. Accepted at the ACM SIGOPS Annual Technical Conference (ATC 2026).
 
 Experience
 ======

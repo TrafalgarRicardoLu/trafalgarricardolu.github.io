@@ -15,7 +15,7 @@ My work is centered around distributed storage and infrastructure: metadata and 
 
 I am especially interested in systems that sit close to AI workloads, where storage, networking, memory hierarchy, and GPU utilization interact in ways that make traditional infrastructure assumptions less useful.
 
-I am a co-author of [SOLO](/publications/#solo), accepted at the ACM SIGOPS Annual Technical Conference (ATC 2026), with collaborators at USTC and ByteDance.
+I am a co-author of [SOLO](/#publications), accepted at the ACM SIGOPS Annual Technical Conference (ATC 2026), with collaborators at USTC and ByteDance.
 
 ## How I think about engineering
 

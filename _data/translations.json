@@ -64,10 +64,6 @@
     "zh": "与中国科学技术大学和字节跳动的合作者共同研究跨地域推荐模型训练的存储系统。"
   },
   {
-    "en": "Publication details →",
-    "zh": "查看论文详情 →"
-  },
-  {
     "en": "ByteDance",
     "zh": "字节跳动"
   },
@@ -122,26 +118,6 @@
   {
     "en": "All writing →",
     "zh": "查看全部文章 →"
-  },
-  {
-    "en": "Research on distributed storage and infrastructure for large-scale machine learning.",
-    "zh": "面向大规模机器学习的分布式存储与基础设施研究。"
-  },
-  {
-    "en": "ACM SIGOPS Annual Technical Conference (ATC 2026) · Accepted",
-    "zh": "ACM SIGOPS 年度技术会议（ATC 2026）· 已接收"
-  },
-  {
-    "en": "Joint work between the University of Science and Technology of China (USTC) and ByteDance on single-local-replica storage for geo-distributed recommendation model training.",
-    "zh": "中国科学技术大学与字节跳动共同开展的研究，探索如何将单本地副本存储应用于跨地域推荐模型训练。"
-  },
-  {
-    "en": "Official accepted papers",
-    "zh": "官方接收论文列表"
-  },
-  {
-    "en": "Conference program",
-    "zh": "会议日程"
   },
   {
     "en": "I am a software engineer focused on distributed storage, systems infrastructure, and high-performance data paths.",
@@ -226,10 +202,6 @@
   {
     "en": "Joint work with collaborators at USTC and ByteDance on single-local-replica storage for geo-distributed recommendation model training.",
     "zh": "与中国科学技术大学和字节跳动的合作者共同研究面向跨地域推荐模型训练的单本地副本存储。"
-  },
-  {
-    "en": "Full author list and conference links",
-    "zh": "完整作者名单与会议链接"
   },
   {
     "en": "Distributed Storage",
@@ -332,28 +304,12 @@
     "zh": "关注"
   },
   {
-    "en": "Follow:",
-    "zh": "关注："
-  },
-  {
-    "en": "Feed",
-    "zh": "订阅"
-  },
-  {
     "en": "Email",
     "zh": "邮箱"
   },
   {
     "en": "Website",
     "zh": "网站"
-  },
-  {
-    "en": "Sitemap",
-    "zh": "站点地图"
-  },
-  {
-    "en": ", a fork of",
-    "zh": "，源自"
   },
   {
     "en": "Loading…",
