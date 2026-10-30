@@ -5,7 +5,7 @@ permalink: /work/
 author_profile: false
 ---
 
-<div class="personal-page">
+<div class="personal-page" markdown="1">
 
 <p class="page-intro">Selected publications, projects, and engineering work in distributed storage and AI infrastructure.</p>
 

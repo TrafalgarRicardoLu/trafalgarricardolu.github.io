@@ -76,6 +76,71 @@
   border: 1px solid var(--personal-border);
 }
 
+.hero-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hero-github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--personal-border);
+  border-radius: 50%;
+  color: var(--personal-text);
+  font-size: 1.5rem;
+  text-decoration: none;
+}
+
+.hero-github:hover {
+  color: var(--personal-text);
+  background: var(--personal-soft);
+}
+
+.masthead__menu {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.masthead__menu .greedy-nav {
+  flex: 1;
+  min-width: 0;
+}
+
+.language-toggle {
+  flex-shrink: 0;
+  min-width: 48px;
+  min-height: 44px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--personal-border);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--personal-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.language-toggle:hover {
+  background: var(--personal-soft);
+}
+
+.language-toggle[hidden] {
+  display: none;
+}
+
+.language-toggle:focus-visible,
+.hero-github:focus-visible {
+  outline: 2px solid var(--personal-accent);
+  outline-offset: 4px;
+}
+
 .simple-section {
   padding: 2.6rem 0;
   border-top: 1px solid var(--personal-border);
@@ -251,6 +316,25 @@
 }
 
 @media (max-width: 760px) {
+  .masthead__menu {
+    gap: 0.5rem;
+  }
+
+  .masthead__menu .masthead__menu-item--lg {
+    padding-right: 0.5rem;
+  }
+
+  .masthead__menu .greedy-nav a {
+    margin-right: 0.65rem;
+    margin-left: 0.65rem;
+    font-size: 0.85rem;
+  }
+
+  .masthead__menu .greedy-nav .visible-links li:first-child a {
+    margin-left: 0;
+    white-space: nowrap;
+  }
+
   .personal-home {
     padding-top: 1rem;
   }
@@ -261,8 +345,13 @@
     padding: 2rem 0 2rem;
   }
 
-  .hero-avatar {
+  .hero-profile {
     grid-row: 1;
+    justify-self: start;
+    gap: 0.75rem;
+  }
+
+  .hero-avatar {
     width: 110px;
     height: 110px;
   }

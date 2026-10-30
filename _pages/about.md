@@ -5,7 +5,7 @@ permalink: /about/
 author_profile: false
 ---
 
-<div class="personal-page">
+<div class="personal-page" markdown="1">
 
 <p class="page-intro">I am a software engineer focused on distributed storage, systems infrastructure, and high-performance data paths.</p>
 

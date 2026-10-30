@@ -1,0 +1,454 @@
+[
+  {
+    "en": "Publications",
+    "zh": "论文发表"
+  },
+  {
+    "en": "Writing",
+    "zh": "文章"
+  },
+  {
+    "en": "← Writing",
+    "zh": "← 返回文章列表"
+  },
+  {
+    "en": "About",
+    "zh": "关于我"
+  },
+  {
+    "en": "About Me",
+    "zh": "关于我"
+  },
+  {
+    "en": "Work",
+    "zh": "研究与工作"
+  },
+  {
+    "en": "Experience",
+    "zh": "工作经历"
+  },
+  {
+    "en": "Accepted",
+    "zh": "已接收"
+  },
+  {
+    "en": "Software Engineer · Distributed Systems · Storage",
+    "zh": "软件工程师 · 分布式系统 · 存储"
+  },
+  {
+    "en": "I am a software engineer focused on distributed storage and systems infrastructure, with an interest in building reliable and efficient systems for large-scale data and compute workloads.",
+    "zh": "我是一名软件工程师，专注于分布式存储和系统基础设施，致力于为大规模数据处理与计算任务构建可靠、高效的系统。"
+  },
+  {
+    "en": "My interests include storage systems, Linux, databases, networking, concurrency, high-performance I/O, and AI infrastructure.",
+    "zh": "我关注存储系统、Linux、数据库、网络、并发、高性能 I/O 和 AI 基础设施。"
+  },
+  {
+    "en": "I am a co-author of",
+    "zh": "我参与了"
+  },
+  {
+    "en": ", accepted at ACM SIGOPS ATC 2026.",
+    "zh": "，论文已被 ACM SIGOPS ATC 2026 接收。"
+  },
+  {
+    "en": "I received my Master's degree in Software Engineering from the University of Science and Technology of China (USTC) in 2023 and my Bachelor's degree in Computer Science and Technology from Hangzhou Dianzi University (HDU) in 2020.",
+    "zh": "我于 2023 年获得中国科学技术大学软件工程硕士学位，2020 年获得杭州电子科技大学计算机科学与技术学士学位。"
+  },
+  {
+    "en": "SOLO: Making Single-Local-Replica Storage Practical for Geo-Distributed Recommendation Model Training",
+    "zh": "SOLO：面向跨地域推荐模型训练的实用单本地副本存储"
+  },
+  {
+    "en": "Joint work with collaborators at USTC and ByteDance on storage for geo-distributed recommendation model training.",
+    "zh": "与中国科学技术大学和字节跳动的合作者共同研究跨地域推荐模型训练的存储系统。"
+  },
+  {
+    "en": "Publication details →",
+    "zh": "查看论文详情 →"
+  },
+  {
+    "en": "ByteDance",
+    "zh": "字节跳动"
+  },
+  {
+    "en": "Jun 2023 – Present",
+    "zh": "2023 年 6 月至今"
+  },
+  {
+    "en": "May 2022 – Aug 2022",
+    "zh": "2022 年 5 月至 8 月"
+  },
+  {
+    "en": "Aug 2021 – Mar 2022",
+    "zh": "2021 年 8 月至 2022 年 3 月"
+  },
+  {
+    "en": "Jun 2021 – Aug 2021",
+    "zh": "2021 年 6 月至 8 月"
+  },
+  {
+    "en": "Distributed Storage System",
+    "zh": "分布式存储系统"
+  },
+  {
+    "en": "Developing and optimizing distributed storage systems serving large-scale machine learning and analytics workloads.",
+    "zh": "开发和优化分布式存储系统，为大规模机器学习和数据分析任务提供支持。"
+  },
+  {
+    "en": "TiDB Ecosystem Intern",
+    "zh": "TiDB 生态实习生"
+  },
+  {
+    "en": "Worked on the TiDB ecosystem and",
+    "zh": "参与 TiDB 生态及"
+  },
+  {
+    "en": "Block Storage Intern",
+    "zh": "块存储实习生"
+  },
+  {
+    "en": "Worked on block storage systems and storage infrastructure.",
+    "zh": "参与块存储系统和存储基础设施的开发。"
+  },
+  {
+    "en": ": added monitoring panels and observability features.",
+    "zh": "：开发监控面板与可观测性功能。"
+  },
+  {
+    "en": ".",
+    "zh": "。"
+  },
+  {
+    "en": "All writing →",
+    "zh": "查看全部文章 →"
+  },
+  {
+    "en": "Research on distributed storage and infrastructure for large-scale machine learning.",
+    "zh": "面向大规模机器学习的分布式存储与基础设施研究。"
+  },
+  {
+    "en": "ACM SIGOPS Annual Technical Conference (ATC 2026) · Accepted",
+    "zh": "ACM SIGOPS 年度技术会议（ATC 2026）· 已接收"
+  },
+  {
+    "en": "Joint work between the University of Science and Technology of China (USTC) and ByteDance on single-local-replica storage for geo-distributed recommendation model training.",
+    "zh": "中国科学技术大学与字节跳动共同开展的研究，探索如何将单本地副本存储应用于跨地域推荐模型训练。"
+  },
+  {
+    "en": "Official accepted papers",
+    "zh": "官方接收论文列表"
+  },
+  {
+    "en": "Conference program",
+    "zh": "会议日程"
+  },
+  {
+    "en": "I am a software engineer focused on distributed storage, systems infrastructure, and high-performance data paths.",
+    "zh": "我是一名软件工程师，专注于分布式存储、系统基础设施和高性能数据路径。"
+  },
+  {
+    "en": "What I work on",
+    "zh": "我的工作方向"
+  },
+  {
+    "en": "My work is centered around distributed storage and infrastructure: metadata and data paths, caching, consistency, failure recovery, RPC, Linux I/O, networking, and performance engineering.",
+    "zh": "我的工作围绕分布式存储与基础设施展开，涉及元数据与数据路径、缓存、一致性、故障恢复、RPC、Linux I/O、网络及性能优化。"
+  },
+  {
+    "en": "I am especially interested in systems that sit close to AI workloads, where storage, networking, memory hierarchy, and GPU utilization interact in ways that make traditional infrastructure assumptions less useful.",
+    "zh": "我尤其关注服务于 AI 工作负载的系统。在这些系统中，存储、网络、内存层次结构与 GPU 利用率相互影响，需要重新审视传统基础设施的设计假设。"
+  },
+  {
+    "en": ", accepted at the ACM SIGOPS Annual Technical Conference (ATC 2026), with collaborators at USTC and ByteDance.",
+    "zh": "，与中国科学技术大学和字节跳动的合作者共同完成，论文已被 ACM SIGOPS 年度技术会议（ATC 2026）接收。"
+  },
+  {
+    "en": "How I think about engineering",
+    "zh": "我的工程理念"
+  },
+  {
+    "en": "I like working from first principles. For me, understanding a system means being able to explain why its architecture exists, where the trade-offs come from, what fails under pressure, and how those decisions show up in production performance.",
+    "zh": "我喜欢从第一性原理出发思考。对我而言，理解一个系统意味着能够解释它为何采用这样的架构、取舍从何而来、在压力下哪些环节会失效，以及这些决策如何影响生产环境中的性能。"
+  },
+  {
+    "en": "I use this site to keep a public record of that work: technical notes, deeper essays, project summaries, and things I have learned while building systems.",
+    "zh": "我通过这个网站记录工作中的思考，包括技术笔记、深入分析、项目总结，以及构建系统过程中的收获。"
+  },
+  {
+    "en": "Areas of interest",
+    "zh": "关注领域"
+  },
+  {
+    "en": "Distributed storage and file systems",
+    "zh": "分布式存储与文件系统"
+  },
+  {
+    "en": "Linux and systems programming",
+    "zh": "Linux 与系统编程"
+  },
+  {
+    "en": "C++ concurrency and performance",
+    "zh": "C++ 并发与性能"
+  },
+  {
+    "en": "RPC and networking",
+    "zh": "RPC 与网络"
+  },
+  {
+    "en": "RDMA and NVMe",
+    "zh": "RDMA 与 NVMe"
+  },
+  {
+    "en": "AI infrastructure and storage for GPU workloads",
+    "zh": "AI 基础设施与面向 GPU 工作负载的存储"
+  },
+  {
+    "en": "Distributed consensus and fault tolerance",
+    "zh": "分布式共识与容错"
+  },
+  {
+    "en": "Elsewhere",
+    "zh": "更多链接"
+  },
+  {
+    "en": "Selected publications, projects, and engineering work in distributed storage and AI infrastructure.",
+    "zh": "我在分布式存储与 AI 基础设施领域参与的论文、项目和工程实践。"
+  },
+  {
+    "en": "Selected publication",
+    "zh": "代表论文"
+  },
+  {
+    "en": "Co-author · Accepted at ACM SIGOPS ATC 2026.",
+    "zh": "共同作者 · 已被 ACM SIGOPS ATC 2026 接收。"
+  },
+  {
+    "en": "Joint work with collaborators at USTC and ByteDance on single-local-replica storage for geo-distributed recommendation model training.",
+    "zh": "与中国科学技术大学和字节跳动的合作者共同研究面向跨地域推荐模型训练的单本地副本存储。"
+  },
+  {
+    "en": "Full author list and conference links",
+    "zh": "完整作者名单与会议链接"
+  },
+  {
+    "en": "Distributed Storage",
+    "zh": "分布式存储"
+  },
+  {
+    "en": "I work on storage systems where metadata scalability, data placement, consistency, failure recovery, caching, and end-to-end I/O performance all matter at the same time.",
+    "zh": "我参与的存储系统需要同时考虑元数据扩展能力、数据放置、一致性、故障恢复、缓存及端到端 I/O 性能。"
+  },
+  {
+    "en": "Focus:",
+    "zh": "重点："
+  },
+  {
+    "en": "distributed file systems, metadata/data plane design, cache architecture, reliability, C++ and Linux performance.",
+    "zh": "分布式文件系统、元数据与数据平面设计、缓存架构、可靠性、C++ 与 Linux 性能优化。"
+  },
+  {
+    "en": "AI Infrastructure",
+    "zh": "AI 基础设施"
+  },
+  {
+    "en": "I am interested in storage infrastructure for AI workloads: feeding GPU clusters efficiently, reducing avoidable data movement, and designing cache and I/O paths around modern training and inference systems.",
+    "zh": "我关注服务于 AI 工作负载的存储基础设施：高效地为 GPU 集群提供数据、减少不必要的数据搬移，以及为现代训练与推理系统设计缓存和 I/O 路径。"
+  },
+  {
+    "en": "high-throughput access, cache admission and eviction, prefetching, failure handling, GPU-cluster storage paths.",
+    "zh": "高吞吐数据访问、缓存准入与淘汰、预取、故障处理、GPU 集群存储路径。"
+  },
+  {
+    "en": "Systems Engineering",
+    "zh": "系统工程"
+  },
+  {
+    "en": "A large part of my work is understanding the details below distributed systems: Linux I/O, concurrency primitives, RPC behavior, networking, RDMA, NVMe, profiling, and latency/throughput trade-offs.",
+    "zh": "我的工作很大一部分是深入理解分布式系统的底层细节，包括 Linux I/O、并发原语、RPC 行为、网络、RDMA、NVMe、性能分析，以及延迟与吞吐量之间的取舍。"
+  },
+  {
+    "en": "Linux, C++, concurrency, RPC, RDMA, NVMe, performance analysis.",
+    "zh": "Linux、C++、并发、RPC、RDMA、NVMe、性能分析。"
+  },
+  {
+    "en": "Open technical notes",
+    "zh": "公开技术笔记"
+  },
+  {
+    "en": "I use",
+    "zh": "我在"
+  },
+  {
+    "en": "for deeper technical notes and essays. Over time, representative projects on this page will link to standalone project write-ups with architecture, trade-offs, and outcomes.",
+    "zh": "中分享更深入的技术笔记和文章。后续会逐步补充代表项目的独立介绍，记录架构、设计取舍和成果。"
+  },
+  {
+    "en": "I am a software engineer focus on distributed storage systems. Currently, I am working at ByteDance HDFS team, where I focus on developing and optimizing distributed storage systems serving very large-scale machine learning and analytics .",
+    "zh": "我是一名专注于分布式存储系统的软件工程师，目前在字节跳动 HDFS 团队工作，负责开发和优化服务于超大规模机器学习与数据分析的分布式存储系统。"
+  },
+  {
+    "en": "Previously,I received my Master's degree in Software Engineering from the University of Science and Technology of China (USTC) in 2023 and Bachelor's degree in Computer Science and Technology from Hangzhou Dianzi University (HDU) in 2020.",
+    "zh": "我于 2023 年获得中国科学技术大学软件工程硕士学位，2020 年获得杭州电子科技大学计算机科学与技术学士学位。"
+  },
+  {
+    "en": "I have internship experience at",
+    "zh": "我曾于 2021 至 2022 年在"
+  },
+  {
+    "en": "and ByteDance (Block Storage) during 2021 - 2022. I also participated in",
+    "zh": "和字节跳动（块存储）实习，也参加了"
+  },
+  {
+    "en": ", working on PostgreSQL-pg_systat extensions to add various monitoring panels.",
+    "zh": "，为 PostgreSQL 的 pg_systat 扩展添加了多种监控面板。"
+  },
+  {
+    "en": "I enjoy working on distributed systems and database technologies, with a passion for building reliable, efficient, and scalable software systems.",
+    "zh": "我热爱分布式系统与数据库技术，致力于构建可靠、高效、可扩展的软件系统。"
+  },
+  {
+    "en": "— Co-author. Accepted at the ACM SIGOPS Annual Technical Conference (ATC 2026).",
+    "zh": "——共同作者。论文已被 ACM SIGOPS 年度技术会议（ATC 2026）接收。"
+  },
+  {
+    "en": "Distributed Storage System Intern ByteDance 2023.6 – Now",
+    "zh": "分布式存储系统 · 字节跳动 · 2023 年 6 月至今"
+  },
+  {
+    "en": "TiDB Ecosystem Intern PingCAP 2022.5 – 2022.8",
+    "zh": "TiDB 生态实习生 · PingCAP · 2022 年 5 月至 8 月"
+  },
+  {
+    "en": "Block Storage Intern ByteDance 2021.8 – 2022.3",
+    "zh": "块存储实习生 · 字节跳动 · 2021 年 8 月至 2022 年 3 月"
+  },
+  {
+    "en": "PostgreSQL-pg_systat Google Summer of Code 2021.6 – 2021.8",
+    "zh": "PostgreSQL pg_systat · Google 编程之夏 · 2021 年 6 月至 8 月"
+  },
+  {
+    "en": "Follow",
+    "zh": "关注"
+  },
+  {
+    "en": "Follow:",
+    "zh": "关注："
+  },
+  {
+    "en": "Feed",
+    "zh": "订阅"
+  },
+  {
+    "en": "Email",
+    "zh": "邮箱"
+  },
+  {
+    "en": "Website",
+    "zh": "网站"
+  },
+  {
+    "en": "Sitemap",
+    "zh": "站点地图"
+  },
+  {
+    "en": "Your Name, Powered by",
+    "zh": "Your Name，基于"
+  },
+  {
+    "en": ", a fork of",
+    "zh": "，源自"
+  },
+  {
+    "en": "Loading…",
+    "zh": "加载中…"
+  },
+  {
+    "en": "Article not found",
+    "zh": "未找到文章"
+  },
+  {
+    "en": "The archived article could not be loaded.",
+    "zh": "无法加载这篇历史文章。"
+  },
+  {
+    "en": "Jianhui Lu on GitHub",
+    "zh": "访问 Jianhui Lu 的 GitHub 主页"
+  },
+  {
+    "en": "My 2020",
+    "zh": "我的2020"
+  },
+  {
+    "en": "The Evolution of Consensus Algorithms",
+    "zh": "共识性算法的发展"
+  },
+  {
+    "en": "Looking Back at MIT 6.824",
+    "zh": "回顾MIT 6.824"
+  },
+  {
+    "en": "A Look at Memcache",
+    "zh": "浅谈Memcache"
+  },
+  {
+    "en": "A Look at Spanner",
+    "zh": "浅谈Spanner"
+  },
+  {
+    "en": "Google's Three Foundational Systems: A Summary",
+    "zh": "总结Google的三驾马车"
+  },
+  {
+    "en": "Google's Three Foundational Systems: MapReduce",
+    "zh": "浅谈Google的三驾马车之MapReduce"
+  },
+  {
+    "en": "Google's Three Foundational Systems: Bigtable",
+    "zh": "浅谈Google的三驾马车之Bigtable"
+  },
+  {
+    "en": "Google's Three Foundational Systems: GFS",
+    "zh": "浅谈Google的三驾马车之GFS"
+  },
+  {
+    "en": "A Look at Amazon Aurora",
+    "zh": "浅谈Amazon Aurora"
+  },
+  {
+    "en": "Primary-Backup Replication and Chain Replication",
+    "zh": "浅谈Primary-Back Replication和Chain Replication"
+  },
+  {
+    "en": "A Look at Raft",
+    "zh": "浅谈Raft"
+  },
+  {
+    "en": "A Look at Paxos",
+    "zh": "浅谈Paxos"
+  },
+  {
+    "en": "Before Graduate School Begins",
+    "zh": "写在研究生生活开始之前"
+  },
+  {
+    "en": "My 2019",
+    "zh": "我的2019"
+  },
+  {
+    "en": "China",
+    "zh": "中国"
+  },
+  {
+    "en": "Bytedance",
+    "zh": "字节跳动"
+  },
+  {
+    "en": "The Evolution of Paxos",
+    "zh": "Paxos算法的发展"
+  },
+  {
+    "en": "Looking Back at MIT 6.824",
+    "zh": "回顾MIT6.824"
+  }
+]
