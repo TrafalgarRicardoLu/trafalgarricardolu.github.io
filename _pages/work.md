@@ -7,7 +7,15 @@ author_profile: false
 
 <div class="personal-page">
 
-<p class="page-intro">Selected areas, projects, and engineering work. This page is intentionally concise and will grow as I publish more project notes.</p>
+<p class="page-intro">Selected publications, projects, and engineering work in distributed storage and AI infrastructure.</p>
+
+## Selected publication
+
+**[SOLO: Making Single-Local-Replica Storage Practical for Geo-Distributed Recommendation Model Training](/publications/#solo)**
+
+Co-author · Accepted at ACM SIGOPS ATC 2026.
+
+Joint work with collaborators at USTC and ByteDance on single-local-replica storage for geo-distributed recommendation model training. [Full author list and conference links](/publications/#solo).
 
 ## Distributed Storage
 
